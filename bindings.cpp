@@ -59,12 +59,13 @@ ParseResult parse_glsl(const std::string& source, int stage_int) {
     return result;
 }
 
-PYBIND11_MODULE(glslang_py, m) {
+PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
     m.def("initialize", &initialize);
     m.def("finalize",   &finalize);
     m.def("parse_glsl", &parse_glsl,
-          py::arg("source"), py::arg("stage") = 4);
+          py::arg("source"),
+          py::arg("stage") = 4);
 
     py::class_<ParseResult>(m, "ParseResult")
         .def_readonly("success",   &ParseResult::success)

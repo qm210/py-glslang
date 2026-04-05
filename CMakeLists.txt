@@ -19,6 +19,7 @@ target_include_directories(pyglslang PRIVATE
 )
 
 file(GLOB GLSLANG_LIBS "${GLSLANG_INSTALL_DIR}/lib/*.lib")
+list(FILTER GLSLANG_LIBS EXCLUDE REGEX ".*-sharedd?\\.lib$")
 
 target_link_libraries(pyglslang PRIVATE
     pybind11::module

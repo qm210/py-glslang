@@ -1,27 +1,49 @@
 import sys
-sys.path.insert(0, "build/")   # or install with pip
+from argparse import ArgumentParser
+from enum import Enum
+
+sys.path.insert(0, "build/Release")
 import pyglslang
 
-pyglslang.initialize()
+class Stage(Enum):
+    Vert = 0
+    Tesc = 1
+    Tese = 2
+    Geom = 3
+    Frag = 4
+    Comp = 5
 
-frag_src = """
-    #version 450
-    layout(location = 0) in vec2 vUV;
-    layout(location = 0) out vec4 fragColor;
-    uniform sampler2D uTex;
-    void main() {
-        fragColor = texture(uTex, vUV);
-    }
-"""
+def run(shader_source: str):
+    pyglslang.initialize()
 
-# 4 = fragment
-result = pyglslang.parse_glsl(frag_src, stage=4)
+    try:
+        result = pyglslang.parse_glsl(
+            shader_source,
+            stage=Stage.Frag.value
+        )
+    finally:
+        pyglslang.finalize()
 
-if result.success:
-    print("Parse OK")
-    print(f"SPIR-V word count: {len(result.spirv)}")
-else:
-    print("Parse FAILED:")
-    print(result.info_log)
+    if result.success:
+        print("Parse OK")
+        print(f"SPIR-V word count: {len(result.spirv)}")
+    else:
+        print("Parse FAILED:")
+        print(result.info_log)
 
-pyglslang.finalize()
+
+def parse_cli():
+    parser = ArgumentParser()
+    parser.add_argument("shader",
+                        default="graphics.frag",
+                        nargs="?",
+                        help="Path to shader file (default \"graphics.frag\")")
+    args = parser.parse_args()
+    with open(args.shader, "r", encoding="utf-8") as f:
+        source = f.read()
+    return args, source
+
+
+if __name__ == "__main__":
+    _args, shader = parse_cli()
+    run(shader)
