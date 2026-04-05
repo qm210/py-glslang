@@ -19,12 +19,12 @@ def run(shader_source: str):
     try:
         result = pyglslang.parse_glsl(
             shader_source,
-            stage=Stage.Frag.value
+            stage=pyglslang.Stage.FRAG
         )
     finally:
         pyglslang.finalize()
 
-    if result.success:
+    if result.ok:
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
     else:

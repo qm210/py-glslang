@@ -69,14 +69,24 @@ Parsed parse_glsl(const std::string& source, Stage stage_enum) {
 
 PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
+
+    py::enum_<Stage>(m, "Stage")
+            .value("VERT", STAGE_VERT)
+            .value("TESC", STAGE_TESC)
+            .value("TESE", STAGE_TESE)
+            .value("GEOM", STAGE_GEOM)
+            .value("FRAG", STAGE_FRAG)
+            .value("COMP", STAGE_COMP)
+            .export_values();
+    py::class_<Parsed>(m, "Parsed")
+        .def_readonly("ok", &Parsed::ok)
+        .def_readonly("info", &Parsed::info)
+        .def_readonly("debug", &Parsed::debug)
+        .def_readonly("spirv", &Parsed::spirv);
+
     m.def("initialize", &initialize);
     m.def("finalize", &finalize);
     m.def("parse_glsl", &parse_glsl,
           py::arg("source"),
           py::arg("stage") = STAGE_FRAG);
-    py::class_<Parsed>(m, "ParseResult")
-        .def_readonly("success", &Parsed::ok)
-        .def_readonly("info_log", &Parsed::info)
-        .def_readonly("debug_log", &Parsed::debug)
-        .def_readonly("spirv", &Parsed::spirv);
 }
