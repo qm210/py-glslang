@@ -26,6 +26,10 @@ def parse(source: str):
     return result
 
 
+def render(root: pyglsl.Node):
+    return "TODO"
+
+
 def run(args):
     with open(args.shader, "r", encoding="utf-8") as f:
         source = f.read()
@@ -38,7 +42,8 @@ def run(args):
         count_full = pyglsl.count_nodes(result.ast)
         count_simple = pyglsl.count_nodes(ast)
         ast_printed = write_node(ast)
-        lel = pyglsl.render(ast)
+        # lel = pyglsl.render(ast)
+        written = render(ast)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:
                 f.write(ast_printed)

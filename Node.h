@@ -8,7 +8,6 @@
 #include <string>
 #include <unordered_set>
 
-
 struct Node {
     std::string kind;
     std::string name;
@@ -17,6 +16,10 @@ struct Node {
     std::vector<std::shared_ptr<Node>> children;
 
     uint32_t countTotal();
+
+    const Node& child(int i = 0) const {
+        return *children[i];
+    };
 };
 
 std::shared_ptr<Node> simplify(const Node& node);

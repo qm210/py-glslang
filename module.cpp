@@ -12,7 +12,7 @@
 namespace py = pybind11;
 
 Parsed parse(const std::string& source, Stage stage_enum);
-std::basic_string<char> render(const Node& node);
+std::basic_string<char> render(const Node& node, int level = 0);
 
 PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
@@ -75,7 +75,9 @@ PYBIND11_MODULE(pyglslang, m) {
     );
     m.def(
             "render",
-            &render,
+            [](const std::shared_ptr<Node>& node) {
+                return render(*node);
+            },
             py::arg("root")
     );
 }
