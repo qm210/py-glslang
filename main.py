@@ -29,14 +29,14 @@ def run(shader_source: str):
         print(f"SPIR-V word count: {len(result.spirv)}")
     else:
         print("Parse FAILED:")
-        print(result.info_log)
+        print(result.info)
 
 
 def parse_cli():
     parser = ArgumentParser()
     parser.add_argument("shader",
-                        default="graphics.frag",
                         nargs="?",
+                        default="graphics.frag",
                         help="Path to shader file (default \"graphics.frag\")")
     args = parser.parse_args()
     with open(args.shader, "r", encoding="utf-8") as f:
