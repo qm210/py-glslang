@@ -97,117 +97,143 @@ struct Traverser : public glslang::TIntermTraverser {
 
     Traverser()
             : glslang::TIntermTraverser(true, false, true)
-            , root(std::make_shared<ASTNode>())
-    {
+            , root(std::make_shared<ASTNode>()) {
         root->kind = "Root";
         stack.push_back(root.get());
     }
 
-    ASTNode* top() { return stack.back(); }
+    ASTNode* top() {
+        return stack.back();
+    }
 
-    ASTNode* push(const std::basic_string<char> & kind,
-                  const std::basic_string<char> & name,
-                  const std::basic_string<char> & type,
-                  int line)
-    {
+    ASTNode* push(const std::basic_string<char> &kind,
+                  const std::basic_string<char> &name,
+                  const std::basic_string<char> &type,
+                  int line) {
         auto node = std::make_shared<ASTNode>();
         node->kind = kind;
         node->name = name;
         node->type = type;
         node->line = line;
         top()->children.push_back(node);
-        stack.push_back(node.get());
         return node.get();
     }
 
-    void pop() { stack.pop_back(); }
+    ASTNode* push(const std::basic_string<char> &kind,
+                  const std::basic_string<char> &name,
+                  const glslang::TIntermTyped *n) {
+        return push(kind,
+                    name,
+                    typeStr(n->getType()),
+                    n->getLoc().line);
+    }
+
+    ASTNode* push(const std::basic_string<char> &kind,
+                  const glslang::TIntermOperator *n) {
+        return push(kind, opStr(n->getOp()), n);
+    }
+
+    void to_stack(ASTNode* node) {
+        stack.push_back(node);
+    }
+
+    void pop() {
+        stack.pop_back();
+    }
 
     static std::basic_string<char> typeStr(const glslang::TType& t) {
         return t.getCompleteString().c_str();
     }
 
+    template<typename T>
+    bool visitNode(glslang::TVisit visit, const std::string& kind, T* n) {
+        if (visit == glslang::EvPreVisit) {
+            to_stack(push(kind, n));
+        }
+        else if (visit == glslang::EvPostVisit) {
+            pop();
+        }
+        return true;
+    }
+
+    bool visitNode(glslang::TVisit visit,
+                   const std::string& kind,
+                   const std::string& name,
+                   const std::string& type,
+                   int line) {
+        if (visit == glslang::EvPreVisit) {
+            to_stack(push(kind, name, type, line));
+        }
+        else if (visit == glslang::EvPostVisit) {
+            pop();
+        }
+        return true;
+    }
+
     void visitSymbol(glslang::TIntermSymbol* n) override {
-        auto node = std::make_shared<ASTNode>();
-        node->kind = "Symbol";
-        node->name = n->getName().c_str();
-        node->type = typeStr(n->getType());
-        node->line = n->getLoc().line;
-        top()->children.push_back(node);
+        push("Symbol", n->getName().c_str(), n);
     }
 
     void visitConstantUnion(glslang::TIntermConstantUnion* n) override {
-        auto node = std::make_shared<ASTNode>();
-        node->kind = "Constant";
-        node->type = typeStr(n->getType());
-        node->line = n->getLoc().line;
         const auto& arr = n->getConstArray();
+        auto u = arr[0];
+        std::string name;
         switch (n->getType().getBasicType()) {
-            case glslang::EbtFloat:  node->name = std::to_string(arr[0].getDConst()); break;
-            case glslang::EbtInt:    node->name = std::to_string(arr[0].getIConst()); break;
-            case glslang::EbtUint:   node->name = std::to_string(arr[0].getUConst()); break;
-            case glslang::EbtBool:   node->name = arr[0].getBConst() ? "true" : "false"; break;
-            default:                 node->name = "?"; break;
+            case glslang::EbtFloat:
+                name = std::to_string(u.getDConst());
+                break;
+            case glslang::EbtInt:
+                name = std::to_string(u.getIConst());
+                break;
+            case glslang::EbtUint:
+                name = std::to_string(u.getUConst());
+                break;
+            case glslang::EbtBool:
+                name = u.getBConst() ? "true" : "false";
+                break;
+            default:
+                name = "?";
+                break;
         }
-        top()->children.push_back(node);
+        push("Constant", name, n);
     }
 
     bool visitBinary(glslang::TVisit visit, glslang::TIntermBinary* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Binary", opStr(n->getOp()), typeStr(n->getType()), n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Binary", n);
     }
 
     bool visitUnary(glslang::TVisit visit, glslang::TIntermUnary* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Unary", opStr(n->getOp()), typeStr(n->getType()), n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Unary", n);
     }
 
     bool visitAggregate(glslang::TVisit visit, glslang::TIntermAggregate* n) override {
         if (visit == glslang::EvPreVisit) {
-            std::basic_string<char> name = n->getName().c_str();
-            if (name.empty()) name = opStr(n->getOp());
-            push("Aggregate", name, typeStr(n->getType()), n->getLoc().line);
-        } else if (visit == glslang::EvPostVisit) {
+            std::string name(n->getName());
+            if (name.empty()) {
+                name = opStr(n->getOp());
+            }
+            to_stack(push("Aggregate", name, n));
+        }
+        else if (visit == glslang::EvPostVisit) {
             pop();
         }
         return true;
     }
 
     bool visitSelection(glslang::TVisit visit, glslang::TIntermSelection* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Selection", "if", typeStr(n->getType()), n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Selection", "if", typeStr(n->getType()), n->getLoc().line);
     }
 
     bool visitSwitch(glslang::TVisit visit, glslang::TIntermSwitch* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Switch", "switch", "", n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Switch", "switch", "", n->getLoc().line);
     }
 
     bool visitLoop(glslang::TVisit visit, glslang::TIntermLoop* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Loop", n->testFirst() ? "while" : "do-while", "", n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Loop", n->testFirst() ? "while" : "do-while", "", n->getLoc().line);
     }
 
     bool visitBranch(glslang::TVisit visit, glslang::TIntermBranch* n) override {
-        if (visit == glslang::EvPreVisit)
-            push("Branch", opStr(n->getFlowOp()), "", n->getLoc().line);
-        else if (visit == glslang::EvPostVisit)
-            pop();
-        return true;
+        return visitNode(visit, "Branch", opStr(n->getFlowOp()), "", n->getLoc().line);
     }
 };
 
