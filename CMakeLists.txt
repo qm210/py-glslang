@@ -14,7 +14,6 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 find_package(pybind11 CONFIG REQUIRED)
-# TODO: FetchContent pybind11 in case of need
 
 FetchContent_Declare(glslang
     GIT_REPOSITORY  https://github.com/KhronosGroup/glslang.git

@@ -1,8 +1,8 @@
 ```
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release -j12
+cmake --build build --config Release
 ```
 
 ```
-python main.py graphics.frag
+python main.py graphics.frag [result.out]
 ```
