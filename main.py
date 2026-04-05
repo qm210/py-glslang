@@ -1,17 +1,16 @@
 import sys
 from argparse import ArgumentParser
-from enum import Enum
 
-sys.path.insert(0, "build/Release")
+sys.path.insert(0, "build")
 import pyglslang
 
-class Stage(Enum):
-    Vert = 0
-    Tesc = 1
-    Tese = 2
-    Geom = 3
-    Frag = 4
-    Comp = 5
+
+def print_node(node: pyglslang.ASTNode, level=0):
+    indent = level * 2 * " "
+    print(indent, node.kind, node.type, node.name)
+    for child in node.children:
+        print_node(child, level + 1)
+
 
 def run(shader_source: str):
     pyglslang.initialize()
@@ -27,6 +26,8 @@ def run(shader_source: str):
     if result.ok:
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
+        print("== AST ==")
+        print_node(result.ast)
     else:
         print("Parse FAILED:")
         print(result.info)

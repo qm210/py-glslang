@@ -2,9 +2,14 @@
 #include <pybind11/stl.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/Public/ResourceLimits.h>
-#include <glslang/SPIRV/GlslangToSpv.h>
+#include <GlslangToSpv.h>
+#include <glslang/Include/intermediate.h>
+#include <glslang/MachineIndependent/localintermediate.h>
 #include <string>
 #include <vector>
+#include <memory>
+
+#include "Traverser.h"
 
 namespace py = pybind11;
 
@@ -26,10 +31,11 @@ enum Stage {
 };
 
 struct Parsed {
-    bool ok;
+    bool ok = false;
     std::string info;
     std::string debug;
     std::vector<uint32_t> spirv;
+    std::shared_ptr<ASTNode> ast;
 };
 
 Parsed parse_glsl(const std::string& source, Stage stage_enum) {
@@ -64,6 +70,11 @@ Parsed parse_glsl(const std::string& source, Stage stage_enum) {
 
     glslang::TIntermediate* intermediate = program.getIntermediate(stage);
     glslang::GlslangToSpv(*intermediate, result.spirv);
+
+    Traverser traverser;
+    intermediate->getTreeRoot()->traverse(&traverser);
+    result.ast = traverser.root;
+
     return result;
 }
 
@@ -78,11 +89,21 @@ PYBIND11_MODULE(pyglslang, m) {
             .value("FRAG", STAGE_FRAG)
             .value("COMP", STAGE_COMP)
             .export_values();
+    py::class_<ASTNode, std::shared_ptr<ASTNode>>(m, "ASTNode")
+            .def_readonly("kind", &ASTNode::kind)
+            .def_readonly("name", &ASTNode::name)
+            .def_readonly("type", &ASTNode::type)
+            .def_readonly("line", &ASTNode::line)
+            .def_readonly("children", &ASTNode::children)
+            .def("__repr__", [](const ASTNode& n) {
+                return "<ASTNode " + n.kind + " '" + n.name + "' : " + n.type + ">";
+            });
     py::class_<Parsed>(m, "Parsed")
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
         .def_readonly("debug", &Parsed::debug)
-        .def_readonly("spirv", &Parsed::spirv);
+        .def_readonly("spirv", &Parsed::spirv)
+        .def_readonly("ast", &Parsed::ast);
 
     m.def("initialize", &initialize);
     m.def("finalize", &finalize);
