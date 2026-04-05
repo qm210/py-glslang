@@ -7,14 +7,8 @@
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
 
+#include "Node.h"
 
-struct ASTNode {
-    std::string kind;
-    std::string name;
-    std::string type;
-    int line = 0;
-    std::vector<std::shared_ptr<ASTNode>> children;
-};
 
 static std::string opStr(glslang::TOperator op) {
     switch (op) {
@@ -92,25 +86,25 @@ static std::string opStr(glslang::TOperator op) {
 }
 
 struct Traverser : public glslang::TIntermTraverser {
-    std::shared_ptr<ASTNode> root;
-    std::vector<ASTNode*> stack;
+    std::shared_ptr<Node> root;
+    std::vector<Node*> stack;
 
     Traverser()
             : glslang::TIntermTraverser(true, false, true)
-            , root(std::make_shared<ASTNode>()) {
+            , root(std::make_shared<Node>()) {
         root->kind = "Root";
         stack.push_back(root.get());
     }
 
-    ASTNode* top() {
+    Node* top() {
         return stack.back();
     }
 
-    ASTNode* push(const std::basic_string<char> &kind,
-                  const std::basic_string<char> &name,
-                  const std::basic_string<char> &type,
-                  int line) {
-        auto node = std::make_shared<ASTNode>();
+    Node* push(const std::basic_string<char> &kind,
+               const std::basic_string<char> &name,
+               const std::basic_string<char> &type,
+               int line) {
+        auto node = std::make_shared<Node>();
         node->kind = kind;
         node->name = name;
         node->type = type;
@@ -119,21 +113,21 @@ struct Traverser : public glslang::TIntermTraverser {
         return node.get();
     }
 
-    ASTNode* push(const std::basic_string<char> &kind,
-                  const std::basic_string<char> &name,
-                  const glslang::TIntermTyped *n) {
+    Node* push(const std::basic_string<char> &kind,
+               const std::basic_string<char> &name,
+               const glslang::TIntermTyped *n) {
         return push(kind,
                     name,
                     typeStr(n->getType()),
                     n->getLoc().line);
     }
 
-    ASTNode* push(const std::basic_string<char> &kind,
-                  const glslang::TIntermOperator *n) {
+    Node* push(const std::basic_string<char> &kind,
+               const glslang::TIntermOperator *n) {
         return push(kind, opStr(n->getOp()), n);
     }
 
-    void to_stack(ASTNode* node) {
+    void toStack(Node* node) {
         stack.push_back(node);
     }
 
@@ -148,7 +142,7 @@ struct Traverser : public glslang::TIntermTraverser {
     template<typename T>
     bool visitNode(glslang::TVisit visit, const std::string& kind, T* n) {
         if (visit == glslang::EvPreVisit) {
-            to_stack(push(kind, n));
+            toStack(push(kind, n));
         }
         else if (visit == glslang::EvPostVisit) {
             pop();
@@ -162,7 +156,7 @@ struct Traverser : public glslang::TIntermTraverser {
                    const std::string& type,
                    int line) {
         if (visit == glslang::EvPreVisit) {
-            to_stack(push(kind, name, type, line));
+            toStack(push(kind, name, type, line));
         }
         else if (visit == glslang::EvPostVisit) {
             pop();
@@ -212,7 +206,7 @@ struct Traverser : public glslang::TIntermTraverser {
             if (name.empty()) {
                 name = opStr(n->getOp());
             }
-            to_stack(push("Aggregate", name, n));
+            toStack(push("Aggregate", name, n));
         }
         else if (visit == glslang::EvPostVisit) {
             pop();
@@ -221,19 +215,27 @@ struct Traverser : public glslang::TIntermTraverser {
     }
 
     bool visitSelection(glslang::TVisit visit, glslang::TIntermSelection* n) override {
-        return visitNode(visit, "Selection", "if", typeStr(n->getType()), n->getLoc().line);
+        return visitNode(
+                visit, "If", "if", typeStr(n->getType()), n->getLoc().line
+        );
     }
 
     bool visitSwitch(glslang::TVisit visit, glslang::TIntermSwitch* n) override {
-        return visitNode(visit, "Switch", "switch", "", n->getLoc().line);
+        return visitNode(
+                visit, "Switch", "switch", "", n->getLoc().line
+        );
     }
 
     bool visitLoop(glslang::TVisit visit, glslang::TIntermLoop* n) override {
-        return visitNode(visit, "Loop", n->testFirst() ? "while" : "do-while", "", n->getLoc().line);
+        return visitNode(
+                visit, "Loop", n->testFirst() ? "while" : "do-while", "", n->getLoc().line
+        );
     }
 
     bool visitBranch(glslang::TVisit visit, glslang::TIntermBranch* n) override {
-        return visitNode(visit, "Branch", opStr(n->getFlowOp()), "", n->getLoc().line);
+        return visitNode(
+                visit, "Branch", opStr(n->getFlowOp()), "", n->getLoc().line
+        );
     }
 };
 

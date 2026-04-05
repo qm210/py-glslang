@@ -26,7 +26,12 @@ set(BUILD_TESTING           OFF CACHE BOOL "" FORCE)
 set(ENABLE_OPT              OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glslang)
 
-pybind11_add_module(pyglslang bindings.cpp)
+pybind11_add_module(pyglslang
+    module.cpp
+    parse.cpp
+    render.cpp
+    Node.cpp
+)
 
 target_include_directories(pyglslang PRIVATE
     ${glslang_SOURCE_DIR}

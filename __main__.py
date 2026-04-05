@@ -2,12 +2,11 @@ import sys
 from argparse import ArgumentParser
 
 sys.path.insert(0, "build")
-import pyglslang
+import pyglslang as pyglsl
 
 
-def write_node(node: pyglslang.ASTNode, level=0, previous="") -> str:
+def write_node(node: pyglsl.Node, level=0, previous="") -> str:
     indent = level * 2 * " "
-    #if "temp" not in node.type:
     result = f"{indent}{node.type} \"{node.name}\" ({node.kind})"
     if previous:
         result = f"{previous}\n{result}"
@@ -16,13 +15,14 @@ def write_node(node: pyglslang.ASTNode, level=0, previous="") -> str:
     return result
 
 def parse(source: str):
-    pyglslang.initialize()
+    pyglsl.initialize()
     try:
-        result = pyglslang.parse_glsl(
-            source, stage=pyglslang.Stage.FRAG
+        result = pyglsl.parse(
+            source,
+            stage=pyglsl.Stage.FRAG
         )
     finally:
-        pyglslang.finalize()
+        pyglsl.finalize()
     return result
 
 
@@ -34,7 +34,11 @@ def run(args):
     if result.ok:
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
-        ast_printed = write_node(result.ast)
+        ast = pyglsl.simplify(result.ast)
+        count_full = pyglsl.count_nodes(result.ast)
+        count_simple = pyglsl.count_nodes(ast)
+        ast_printed = write_node(ast)
+        lel = pyglsl.render(ast)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:
                 f.write(ast_printed)
