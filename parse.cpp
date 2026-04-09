@@ -1,14 +1,17 @@
 #include "Parsed.h"
 #include "Traverser.h"
 
-Parsed parse(const std::string& source, Stage stage_enum) {
+Parsed parse_when_initialized(const std::string& source, enums stage_enum) {
     auto stage = static_cast<EShLanguage>(stage_enum);
     glslang::TShader shader(stage);
     const char* src = source.c_str();
+    // name arbitrary, as we only have one shader / stage here
     const char* name = "shader";
     shader.setStringsWithLengthsAndNames(&src, nullptr, &name, 1);
-    shader.setEnvInput(glslang::EShSourceGlsl, stage,
-                       glslang::EShClientOpenGL, 450);
+    shader.setEnvInput(glslang::EShSourceGlsl,
+                       stage,
+                       glslang::EShClientOpenGL,
+                       450);
     shader.setEnvClient(glslang::EShClientOpenGL,
                         glslang::EShTargetOpenGL_450);
     shader.setEnvTarget(glslang::EShTargetSpv,
@@ -38,9 +41,16 @@ Parsed parse(const std::string& source, Stage stage_enum) {
     glslang::TIntermediate* intermediate = program.getIntermediate(stage);
     glslang::GlslangToSpv(*intermediate, result.spirv);
 
-    Traverser traverser;
+    Traverser traverser(*intermediate);
     intermediate->getTreeRoot()->traverse(&traverser);
-    result.ast = traverser.root;
+    result.ast = traverser.root();
 
     return result;
+}
+
+Parsed parse(const std::string& source, enums stage) {
+    glslang::InitializeProcess();
+    Parsed parsed = parse_when_initialized(source, stage);
+    glslang::FinalizeProcess();
+    return parsed;
 }

@@ -14,17 +14,6 @@ def write_node(node: pyglsl.Node, level=0, previous="") -> str:
         result = write_node(child, level + 1, result)
     return result
 
-def parse(source: str):
-    pyglsl.initialize()
-    try:
-        result = pyglsl.parse(
-            source,
-            stage=pyglsl.Stage.FRAG
-        )
-    finally:
-        pyglsl.finalize()
-    return result
-
 
 def render(root: pyglsl.Node):
     return "TODO"
@@ -34,7 +23,7 @@ def run(args):
     with open(args.shader, "r", encoding="utf-8") as f:
         source = f.read()
 
-    result = parse(source)
+    result = pyglsl.parse(source)
     if result.ok:
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
@@ -43,6 +32,7 @@ def run(args):
         count_simple = pyglsl.count_nodes(ast)
         ast_printed = write_node(ast)
         # lel = pyglsl.render(ast)
+        
         written = render(ast)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:

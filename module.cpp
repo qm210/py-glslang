@@ -6,18 +6,18 @@
 #include <memory>
 
 #include "Node.h"
-#include "Stage.h"
+#include "enums.h"
 #include "Parsed.h"
 
 namespace py = pybind11;
 
-Parsed parse(const std::string& source, Stage stage_enum);
+Parsed parse(const std::string& source, enums stage_enum);
 std::basic_string<char> render(const Node& node, int level = 0);
 
 PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
 
-    py::enum_<Stage>(m, "Stage")
+    py::enum_<enums>(m, "Stage")
             .value("VERT", STAGE_VERT)
             .value("TESC", STAGE_TESC)
             .value("TESE", STAGE_TESE)
@@ -41,18 +41,6 @@ PYBIND11_MODULE(pyglslang, m) {
         .def_readonly("ast", &Parsed::ast)
         .def_readonly("spirv", &Parsed::spirv);
 
-    m.def(
-            "initialize",
-            []() {
-                glslang::InitializeProcess();
-            }
-    );
-    m.def(
-            "finalize",
-            []() {
-                glslang::FinalizeProcess();
-            }
-    );
     m.def(
             "parse",
             &parse,

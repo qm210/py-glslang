@@ -8,6 +8,7 @@ if(DEFINED Python3_EXECUTABLE)
     set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE} CACHE FILEPATH "" FORCE)
 endif()
 
+# currently needs pybind11 pre-installed -> might also FetchContent that
 execute_process(
     COMMAND python -c "import pybind11; print(pybind11.get_cmake_dir())"
     OUTPUT_VARIABLE pybind11_DIR
