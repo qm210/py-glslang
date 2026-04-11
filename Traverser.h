@@ -12,6 +12,56 @@
 
 using namespace glslang;
 
+static const char* builtinName(TOperator op) {
+    switch (op) {
+        case EOpMod: return "mod";
+        case EOpModf: return "modf";
+        case EOpSin: return "sin";
+        case EOpCos: return "cos";
+        case EOpTan: return "tan";
+        case EOpAsin: return "asin";
+        case EOpAcos: return "acos";
+        case EOpAtan: return "atan";
+        case EOpSqrt: return "sqrt";
+        case EOpInverseSqrt: return "inversesqrt";
+        case EOpAbs: return "abs";
+        case EOpSign: return "sign";
+        case EOpFloor: return "floor";
+        case EOpCeil: return "ceil";
+        case EOpFract: return "fract";
+        case EOpPow: return "pow";
+        case EOpExp: return "exp";
+        case EOpExp2: return "exp2";
+        case EOpLog: return "log";
+        case EOpLog2: return "log2";
+        case EOpMin: return "min";
+        case EOpMax: return "max";
+        case EOpClamp: return "clamp";
+        case EOpMix: return "mix";
+        case EOpStep: return "step";
+        case EOpSmoothStep: return "smoothstep";
+        case EOpLength: return "length";
+        case EOpDistance: return "distance";
+        case EOpDot: return "dot";
+        case EOpCross: return "cross";
+        case EOpNormalize: return "normalize";
+        case EOpReflect: return "reflect";
+        case EOpRefract: return "refract";
+        case EOpFaceForward: return "faceforward";
+        case EOpTexture: return "texture";
+        case EOpTextureProj: return "textureProj";
+        case EOpTextureLod: return "textureLod";
+        case EOpTextureFetch: return "texelFetch";
+        case EOpOuterProduct: return "outerProduct";
+        case EOpTranspose: return "transpose";
+        case EOpDeterminant: return "determinant";
+        case EOpMatrixInverse: return "inverse";
+        case EOpAll: return "all";
+        case EOpAny: return "any";
+        default: return nullptr;
+    }
+}
+
 static std::string opStr(TOperator op) {
     switch (op) {
         case EOpAssign: return "=";
@@ -23,7 +73,6 @@ static std::string opStr(TOperator op) {
         case EOpSub: return "-";
         case EOpMul: return "*";
         case EOpDiv: return "/";
-        case EOpMod: return "%";
         case EOpNegative: return "-";
         case EOpEqual: return "==";
         case EOpNotEqual: return "!=";
@@ -34,56 +83,16 @@ static std::string opStr(TOperator op) {
         case EOpLogicalAnd: return "&&";
         case EOpLogicalOr: return "||";
         case EOpLogicalNot: return "!";
-        case EOpFunctionCall: return "call";
-        case EOpFunction: return "function";
-        case EOpParameters: return "params";
-        case EOpLinkerObjects: return "linker-objects";
-        case EOpSequence: return "sequence";
-        case EOpScope: return "scope";
-        case EOpVectorSwizzle: return "swizzle";
-        case EOpIndexDirect: return "index";
-        case EOpIndexIndirect: return "index[]";
-        case EOpIndexDirectStruct: return "field";
-        case EOpDot: return "dot";
-        case EOpCross: return "cross";
-        case EOpNormalize: return "normalize";
-        case EOpLength: return "length";
-        case EOpDistance: return "distance";
-        case EOpReflect: return "reflect";
-        case EOpRefract: return "refract";
-        case EOpMix: return "mix";
-        case EOpClamp: return "clamp";
-        case EOpSmoothStep: return "smoothstep";
-        case EOpStep: return "step";
-        case EOpMin: return "min";
-        case EOpMax: return "max";
-        case EOpPow: return "pow";
-        case EOpExp: return "exp";
-        case EOpExp2: return "exp2";
-        case EOpLog: return "log";
-        case EOpLog2: return "log2";
-        case EOpSqrt: return "sqrt";
-        case EOpInverseSqrt: return "inversesqrt";
-        case EOpAbs: return "abs";
-        case EOpSign: return "sign";
-        case EOpFloor: return "floor";
-        case EOpCeil: return "ceil";
-        case EOpFract: return "fract";
-        case EOpSin: return "sin";
-        case EOpCos: return "cos";
-        case EOpTan: return "tan";
-        case EOpAsin: return "asin";
-        case EOpAcos: return "acos";
-        case EOpAtan: return "atan";
-        case EOpTexture: return "texture";
-        case EOpTextureProj: return "textureProj";
-        case EOpTextureLod: return "textureLod";
-        case EOpTextureFetch: return "texelFetch";
-        case EOpReturn: return "return";
-        case EOpBreak: return "break";
-        case EOpContinue: return "continue";
-        case EOpTerminateInvocation: return "discard";
-        default: return "op(" + std::to_string((int)op) + ")";
+        case EOpVectorSwizzle: return ".";
+        case EOpIndexDirect:
+        case EOpIndexIndirect: return "[]";
+        case EOpIndexDirectStruct: return ".";
+        default: {
+            if (const char* builtin = builtinName(op)) {
+                return builtin;
+            }
+            return "op(" + std::to_string((int)op) + ")";
+        }
     }
 }
 
@@ -238,13 +247,20 @@ static NodeSource extract(TIntermNode* n, const TIntermediate& intermediate) {
 struct Traverser : public TIntermTraverser {
 private:
     std::vector<std::vector<NodePtr>> stack;
+    const TIntermediate& intermediate;
 
     std::vector<NodePtr>& top() {
         return stack.back();
     }
 
-    void push() {
+    void pushStack() {
         stack.push_back({});
+    }
+
+    template <typename T, typename... Args>
+    void addNode(TIntermNode* n, Args&&... args) {
+        auto node = Node::make<T>(src(n), std::forward<Args>(args)...);
+        top().push_back(node);
     }
 
     std::vector<NodePtr> pop() {
@@ -253,316 +269,357 @@ private:
         return v;
     }
 
-    /*
-    std::vector<NodePtr> stack;
-
-    void pop() {
-        stack.pop_back();
-    }
-
-    void push(Node* node) {
-        stack.push_back(node);
-    }
-
-    void addToCurrent(std::shared_ptr<Node> child) {
-        Node *top = stack.back();
-        top->children.push_back(child);
-    }
-
-    Node* createChild(const std::basic_string<char> &kind,
-                      const std::basic_string<char> &name,
-                      const std::basic_string<char> &type,
-                      int line) {
-        auto node = std::make_shared<Node>();
-        node->kind = kind;
-        node->name = name;
-        node->type = type;
-        node->line = line;
-        addToCurrent(node);
-        return node.get();
-    }
-    */
-
-    const TIntermediate& intermediate_;
-
     NodeSource src(TIntermNode* n) {
-        return extract(n, intermediate_);
+        return extract(n, intermediate);
+    }
+
+    std::vector<NodePtr> traverseChildren(TIntermNode* n) {
+        if (!n) {
+            return std::vector<NodePtr>{};
+        }
+        pushStack();
+        n->traverse(this);
+        return pop();
+    }
+
+    NodePtr first(std::vector<NodePtr> vec) {
+        return vec.empty() ? nullptr: vec.front();
     }
 
 public:
-    // std::shared_ptr<Node> root;
-
     explicit Traverser(const TIntermediate& intermediate)
         : TIntermTraverser(true, false, true)
-        , intermediate_(intermediate)
+        , intermediate(intermediate)
     {
-//        root = std::make_shared<Node>(
-//                SequenceNode{ .isRoot = true }
-//        );
-        push();
+        pushStack();
     }
 
     NodePtr root() {
         auto seq = pop();
-        return Node::make<SequenceNode>(std::move(seq));
+        NodePtr node = first(seq);
+        return std::move(node);
     }
 
-    // ---- Symbols & constants ------------------------------------------
-
     void visitSymbol(TIntermSymbol* n) override {
-        top().push_back(Node::make<SymbolNode>(
+        addNode<SymbolNode>(
+                n,
                 std::string(n->getName().c_str()),
                 typeStr(n->getType())
-        ));
+        );
     }
 
     void visitConstantUnion(TIntermConstantUnion* n) override {
-        top().push_back(Node::make<ConstantNode>(formatConstant(n)));
+        addNode<ConstantNode>(
+                n,
+                formatConstant(n)
+        );
     }
 
-    // ---- Binary -------------------------------------------------------
+    TIntermSymbol* declarationSymbol(TIntermBinary* n) {
+        if (n->getOp() != EOpAssign) {
+            return nullptr;
+        }
+        auto *symbol = n->getLeft()->getAsSymbolNode();
+        if (!symbol) {
+            return nullptr;
+        }
+        auto storage = symbol->getType().getQualifier().storage;
+        if (storage == EvqTemporary || storage == EvqGlobal) {
+            return symbol;
+        }
+        return nullptr;
+    }
 
     bool visitBinary(TVisit visit, TIntermBinary* n) override {
         if (visit == EvPreVisit) {
-            push(); // will collect [lhs, rhs]
+            pushStack();
         } else if (visit == EvPostVisit) {
             auto children = pop();
-            // children[0] = lhs, children[1] = rhs
-            auto node = Node::make<BinaryNode>(opStr(n->getOp()), children[0], children[1]);
-            top().push_back(node);
+            if (auto declSymbol = declarationSymbol(n)) {
+                addNode<DeclareNode>(
+                        n,
+                        typeStr(declSymbol->getType()),
+                        std::string(declSymbol->getName()),
+                        children[1]
+                );
+            } else {
+                addNode<BinaryNode>(
+                        n,
+                        opStr(n->getOp()),
+                        children[0],
+                        children[1]
+                );
+            }
         }
         return true;
     }
-
-    // ---- Unary --------------------------------------------------------
 
     bool visitUnary(TVisit visit, TIntermUnary* n) override {
         if (visit == EvPreVisit) {
-            push();
+            pushStack();
         } else if (visit == EvPostVisit) {
             auto children = pop();
             auto op = n->getOp();
-            top().push_back(Node::make<UnaryNode>(
+            addNode<UnaryNode>(
+                    n,
                     opStr(op),
                     op == EOpPostIncrement || op == EOpPostDecrement,
                     children[0]
-            ));
+            );
         }
         return true;
     }
 
-    // ---- Aggregates ---------------------------------------------------
-
     static std::string baseName(const char* mangledName) {
         std::string s(mangledName);
-        auto paren = s.find('(');
-        if (paren != std::string::npos)
-            s.erase(paren);
+        auto parent = s.find('(');
+        if (parent != std::string::npos) {
+            s.erase(parent);
+        }
         return s;
     }
 
-    struct FunctionParts {
-        std::vector<std::pair<std::string, std::string>> params; // {typeName, varName}
-        std::vector<NodePtr> body;
-    };
+    static bool nodesEqual(const NodePtr& a, const NodePtr& b) {
+        if (!a || !b)
+            return a == b;
+        if (a->data.index() != b->data.index())
+            return false;
+        if (auto* ca = a->data_if<ConstructNode>()) {
+            auto* cb = b->data_if<ConstructNode>();
+            if (ca->typeName != cb->typeName)
+                return false;
+            if (ca->args.size() != cb->args.size())
+                return false;
+            for (size_t i = 0; i < ca->args.size(); i++) {
+                if (!nodesEqual(ca->args[i], cb->args[i]))
+                    return false;
+            }
+            return true;
+        }
+        if (auto* ca = a->data_if<CallNode>()) {
+            auto* cb = b->data_if<CallNode>();
+            if (ca->functionName != cb->functionName)
+                return false;
+            if (ca->args.size() != cb->args.size())
+                return false;
+            for (size_t i = 0; i < ca->args.size(); i++) {
+                if (!nodesEqual(ca->args[i], cb->args[i]))
+                    return false;
+            }
+            return true;
+        }
+        if (auto* ca = a->data_if<SymbolNode>()) {
+            return ca->name == b->data_if<SymbolNode>()->name;
+        }
+        if (auto* ca = a->data_if<ConstantNode>()) {
+            return ca->value == b->data_if<ConstantNode>()->value;
+        }
+        return false;
+    }
 
-    static FunctionParts splitFunctionChildren(
-            TIntermAggregate* funcNode,
-            const std::vector<NodePtr>& children)
+    static std::vector<NodePtr> stripReturnTemporaries(std::vector<NodePtr> body) {
+        // Some GLSL quirk duplicates return nodes as additional node. Do not want.
+        for (size_t i = 1; i < body.size(); i++) {
+            auto* ret = body[i - 1]->data_if<ReturnNode>();
+            if (!ret) {
+                continue;
+            }
+            if (nodesEqual(ret->value, body[i])) {
+                body.erase(body.begin() + i);
+                i--;
+            }
+        }
+        return body;
+    }
+
+    static FunctionParts splitFunction(const std::vector<NodePtr>& children)
     {
         FunctionParts result;
-
-        // children[0] is the EOpParameters node → a SequenceNode of SymbolNodes
-        // children[1] is the EOpSequence body   → a SequenceNode of statement nodes
-        // (if the function has no parameters, glslang may omit children[0])
-
         int bodyIndex = 0;
-
         if (children.size() >= 2) {
-            // First child: parameters
-            if (auto* seq = std::get_if<SequenceNode>(&children[0]->data)) {
+            if (auto *seq = children[0]->data_if<SequenceNode>()) {
                 for (auto& param : seq->statements) {
-                    if (auto* sym = std::get_if<SymbolNode>(&param->data)) {
-                        result.params.push_back({ sym->typeName, sym->name });
+                    if (auto* sym = param->data_if<SymbolNode>()) {
+                        result.params.push_back({
+                            sym->typeName, sym->name
+                        });
                     }
                 }
             }
             bodyIndex = 1;
         }
-
-        // Remaining child: body sequence — unwrap the SequenceNode
-        if (bodyIndex < (int)children.size()) {
-            if (auto* seq = std::get_if<SequenceNode>(&children[bodyIndex]->data)) {
-                result.body = seq->statements; // flat vector of statement NodePtrs
+        if (bodyIndex < children.size()) {
+            if (auto* seq = children[bodyIndex]->data_if<SequenceNode>()) {
+                result.body = seq->statements;
             } else {
-                // Degenerate case: single-statement body not wrapped in a sequence
                 result.body = { children[bodyIndex] };
             }
         }
-
+        result.body = stripReturnTemporaries(std::move(result.body));
         return result;
+    }
+
+    void dumpSequence(TIntermAggregate *n) {
+        for (auto* child : n->getSequence()) {
+            auto* childAgg = child->getAsAggregate();
+            if (childAgg) {
+                printf("  child op=%d (%s) type=%s\n",
+                       childAgg->getOp(),
+                       opStr(childAgg->getOp()).c_str(),
+                       typeStr(childAgg->getType()).c_str());
+            } else if (child->getAsSymbolNode()) {
+                printf("  child symbol=%s\n",
+                       child->getAsSymbolNode()->getName().c_str());
+            } else if (child->getAsBranchNode()) {
+                printf("  child branch op=%d\n",
+                       child->getAsBranchNode()->getFlowOp());
+            } else if (child->getAsUnaryNode()) {
+                printf("  child unary op=%d\n",
+                       child->getAsUnaryNode()->getOp());
+            } else if (child->getAsBinaryNode()) {
+                printf("  child binary op=%d (%s)\n",
+                       child->getAsBinaryNode()->getOp(),
+                       opStr(child->getAsBinaryNode()->getOp()).c_str());
+            } else {
+                printf("  child unknown type\n");
+            }
+        }
     }
 
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
         if (visit == EvPreVisit) {
-            push();
+            pushStack();
         } else if (visit == EvPostVisit) {
             auto children = pop();
-            NodePtr result;
-
             switch (n->getOp()) {
                 case EOpFunction: {
-                    auto [params, body] = splitFunctionChildren(n, children);
-                    result = Node::make<FunctionNode>(
+                    auto [params, body] =
+                            splitFunction(children);
+                    addNode<FunctionNode>(
+                            n,
                             typeStr(n->getType()),
                             baseName(n->getName().c_str()),
                             std::move(params),
-                            std::move(body)   // ← this is what you reorder
+                            std::move(body)
                     );
                     break;
                 }
                 case EOpFunctionCall:
-                    result = Node::make<CallNode>(
+                    addNode<CallNode>(
+                            n,
                             std::string(n->getName().c_str()),
                             std::move(children)
                     );
                     break;
+                case EOpParameters:
                 case EOpSequence:
-                    result = Node::make<SequenceNode>(std::move(children));
+                    dumpSequence(n);
+                    addNode<SequenceNode>(
+                            n,
+                            std::move(children)
+                    );
                     break;
                 default:
-                    // constructors: vec4(...), mat3(...), etc.
-                    result = Node::make<ConstructNode>(typeStr(n->getType()), std::move(children));
+                    if (const char* builtin = builtinName(n->getOp())) {
+                        addNode<CallNode>(
+                                n,
+                                std::string(builtin),
+                                std::move(children)
+                        );
+                    } else {
+                        addNode<ConstructNode>(
+                                n,
+                                typeStr(n->getType()),
+                                std::move(children)
+                        );
+                    }
                     break;
             }
-            top().push_back(result);
-        }
-        return true;
-    }
-
-    // ---- Selection, loops, branches: same pattern --------------------
-    // (omitted for brevity — same push/pop/make<> approach)
-
-/*
-
-    Node* createChild(const std::basic_string<char> &kind,
-               const std::basic_string<char> &name,
-               const TIntermTyped *n) {
-        return createChild(kind,
-                    name,
-                    typeStr(n->getType()),
-                    n->getLoc().line);
-    }
-
-    Node* createChild(const std::basic_string<char> &kind,
-               const TIntermOperator *n) {
-        return createChild(kind, opStr(n->getOp()), n);
-    }
-
-    static std::basic_string<char> typeStr(const TType& t) {
-        return t.getCompleteString().c_str();
-    }
-
-    template<typename T>
-    bool visitNode(TVisit visit, const std::string& kind, T* n) {
-        if (visit == EvPreVisit) {
-            push(createChild(kind, n));
-        }
-        else if (visit == EvPostVisit) {
-            pop();
-        }
-        return true;
-    }
-
-    bool visitNode(TVisit visit,
-                   const std::string& kind,
-                   const std::string& name,
-                   const std::string& type,
-                   int line) {
-        if (visit == EvPreVisit) {
-            push(createChild(kind, name, type, line));
-        }
-        else if (visit == EvPostVisit) {
-            pop();
-        }
-        return true;
-    }
-
-    void visitSymbol(TIntermSymbol* n) override {
-        createChild("Symbol", n->getName().c_str(), n);
-    }
-
-    void visitConstantUnion(TIntermConstantUnion* n) override {
-        const auto& arr = n->getConstArray();
-        auto u = arr[0];
-        std::string name;
-        switch (n->getType().getBasicType()) {
-            case EbtFloat:
-                name = std::to_string(u.getDConst());
-                break;
-            case EbtInt:
-                name = std::to_string(u.getIConst());
-                break;
-            case EbtUint:
-                name = std::to_string(u.getUConst());
-                break;
-            case EbtBool:
-                name = u.getBConst() ? "true" : "false";
-                break;
-            default:
-                name = "?";
-                break;
-        }
-        createChild("Constant", name, n);
-    }
-
-    bool visitBinary(TVisit visit, TIntermBinary* n) override {
-        return visitNode(visit, "Binary", n);
-    }
-
-    bool visitUnary(TVisit visit, TIntermUnary* n) override {
-        return visitNode(visit, "Unary", n);
-    }
-
-    bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
-        if (visit == EvPreVisit) {
-            std::string name(n->getName());
-            if (name.empty()) {
-                name = opStr(n->getOp());
-            }
-            push(createChild("Aggregate", name, n));
-        }
-        else if (visit == EvPostVisit) {
-            pop();
         }
         return true;
     }
 
     bool visitSelection(TVisit visit, TIntermSelection* n) override {
-        return visitNode(
-                visit, "If", "if", typeStr(n->getType()), n->getLoc().line
+        if (visit != EvPreVisit) {
+            return true;
+        }
+        auto condition = first(traverseChildren(n->getCondition()));
+        auto trueBranch = traverseChildren(n->getTrueBlock());
+        auto falseBranch = traverseChildren(n->getFalseBlock());
+        addNode<IfNode>(
+                n,
+                condition,
+                std::move(trueBranch),
+                std::move(falseBranch)
         );
+        return false;
     }
 
     bool visitSwitch(TVisit visit, TIntermSwitch* n) override {
-        return visitNode(
-                visit, "Switch", "switch", "", n->getLoc().line
+        if (visit != EvPreVisit) {
+            return true;
+        }
+        auto condition = first(traverseChildren(n->getCondition()));
+        pushStack();
+        for (auto *caseNode : n->getBody()->getSequence()) {
+            caseNode->traverse(this);
+        }
+        auto cases = pop();
+        addNode<SwitchNode>(
+                n,
+                condition,
+                std::move(cases)
         );
+        return false;
     }
 
     bool visitLoop(TVisit visit, TIntermLoop* n) override {
-        return visitNode(
-                visit, "Loop", n->testFirst() ? "while" : "do-while", "", n->getLoc().line
+        if (visit != EvPreVisit) {
+            return true;
+        }
+        NodePtr condition = first(traverseChildren(n->getTest()));
+        NodePtr increment = first(traverseChildren(n->getTerminal()));
+        auto body = traverseChildren(n->getBody());
+        addNode<LoopNode>(
+                n,
+                condition,
+                increment,
+                std::move(body),
+                !n->testFirst()
         );
+        return false;
     }
 
     bool visitBranch(TVisit visit, TIntermBranch* n) override {
-        return visitNode(
-                visit, "Branch", opStr(n->getFlowOp()), "", n->getLoc().line
-        );
+        if (visit != EvPreVisit) {
+            return true;
+        }
+        auto value = first(traverseChildren(n->getExpression()));
+        switch (n->getFlowOp()) {
+            case EOpReturn:
+                addNode<ReturnNode>(n, value);
+                break;
+            case EOpBreak:
+                addNode<BreakNode>(n);
+                break;
+            case EOpContinue:
+                addNode<ContinueNode>(n);
+                break;
+            case EOpKill:
+                addNode<DiscardNode>(n);
+                break;
+            case EOpCase:
+                addNode<CaseNode>(n, value);
+                break;
+            case EOpDefault:
+                addNode<CaseNode>(n, nullptr);
+                break;
+            default:
+                printf("Ignore Branch FlowOp %d\n", n->getFlowOp());
+                break;
+        }
+        return true;
     }
-
-*/
 
 };
 

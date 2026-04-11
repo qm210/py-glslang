@@ -30,7 +30,7 @@ FetchContent_MakeAvailable(glslang)
 pybind11_add_module(pyglslang
     module.cpp
     parse.cpp
-    render.cpp
+    emit.cpp
     Node.cpp
 )
 
@@ -46,11 +46,11 @@ target_link_libraries(pyglslang PRIVATE
     glslang-default-resource-limits
 )
 set_target_properties(pyglslang PROPERTIES
-    CXX_STANDARD                      17
-    RUNTIME_OUTPUT_DIRECTORY          "${CMAKE_BINARY_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE  "${CMAKE_BINARY_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG    "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY          "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE  "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG    "${CMAKE_BINARY_DIR}"
+    CXX_STANDARD                        17
+    RUNTIME_OUTPUT_DIRECTORY            "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE    "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG      "${CMAKE_BINARY_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY            "${CMAKE_BINARY_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE    "${CMAKE_BINARY_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG      "${CMAKE_BINARY_DIR}"
 )

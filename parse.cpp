@@ -1,7 +1,7 @@
-#include "Parsed.h"
+#include "module.h"
 #include "Traverser.h"
 
-Parsed parse_when_initialized(const std::string& source, enums stage_enum) {
+Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
     auto stage = static_cast<EShLanguage>(stage_enum);
     glslang::TShader shader(stage);
     const char* src = source.c_str();
@@ -48,7 +48,7 @@ Parsed parse_when_initialized(const std::string& source, enums stage_enum) {
     return result;
 }
 
-Parsed parse(const std::string& source, enums stage) {
+Parsed parse(const std::string& source, Stage stage) {
     glslang::InitializeProcess();
     Parsed parsed = parse_when_initialized(source, stage);
     glslang::FinalizeProcess();

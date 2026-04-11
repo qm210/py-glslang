@@ -28,10 +28,8 @@ def run(args):
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
         ast = pyglsl.simplify(result.ast)
-        count_full = pyglsl.count_nodes(result.ast)
-        count_simple = pyglsl.count_nodes(ast)
+        code = pyglsl.emit(ast)
         ast_printed = write_node(ast)
-        # lel = pyglsl.render(ast)
         
         written = render(ast)
         if args.outfile:
