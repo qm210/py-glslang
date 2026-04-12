@@ -6,7 +6,6 @@
 #include <string>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <glslang/Include/intermediate.h>
-#include <GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 #include <stdexcept>
@@ -25,9 +24,7 @@ enum Stage {
 struct Parsed {
     bool ok = false;
     std::string info;
-    std::string debug;
     NodePtr node;
-    std::vector<uint32_t> spirv;
 
     [[nodiscard]]
     const RootNode& root() const {

@@ -123,9 +123,7 @@ PYBIND11_MODULE(pyglslang, m) {
     py::class_<Parsed>(m, "Parsed")
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
-        .def_readonly("debug", &Parsed::debug)
-        .def_readonly("ast", &Parsed::node)
-        .def_readonly("spirv", &Parsed::spirv);
+        .def_readonly("node", &Parsed::node);
 
     m.def(
             "parse",

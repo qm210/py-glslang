@@ -3,8 +3,7 @@
 
 TEST_CASE("parse some small shader") {
     std::string given = R"(#version 450
-        layout(location=0) out vec4 outColor;
-        // out vec4 outColor;
+        out vec4 outColor;
 
         float hash12(vec2 p) {
             return fract(p.xy.x);
