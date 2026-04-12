@@ -16,9 +16,9 @@ using namespace glslang;
 
 static std::string precisionQualifier(const TType& t) {
     switch (t.getQualifier().precision) {
-        case EpqLow: return "lowp ";
-        case EpqMedium: return "mediump ";
-        case EpqHigh: return "highp ";
+        case EpqLow: return "lowp";
+        case EpqMedium: return "mediump";
+        case EpqHigh: return "highp";
         default: return "";
     }
 }
@@ -51,6 +51,22 @@ static inline const char oneDigit(int digit) {
 
 static std::string typeStr(const TType& t) {
     std::string s = precisionQualifier(t);
+    if (!s.empty()) {
+        s += " ";
+    }
+    if (auto storage = t.getStorageQualifierString()) {
+        s += std::string(storage) + " ";
+    }
+
+    // TODO integrate these:
+    auto quali = t.getQualifier();
+    int location = quali.hasLocation() ? quali.layoutLocation : -1;
+    auto complete = t.getCompleteString();
+    bool isUniform = quali.isUniform();
+    bool isConst = quali.storage == EvqConst;
+    bool isGlobal = quali.storage == EvqGlobal;
+    int binding = quali.hasBinding() ? quali.layoutBinding : -1;
+    int set = quali.hasSet() ? quali.layoutSet : -1;
 
     if (t.isStruct()) {
         s += t.getTypeName().c_str();

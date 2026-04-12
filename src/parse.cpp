@@ -19,7 +19,8 @@ Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
             GetDefaultResources(),
             450,
             false,
-            static_cast<EShMessages>(EShMsgDefault)
+            static_cast<EShMessages>(EShMsgDefault
+                                   | EShMsgDebugInfo)
     );
     result.info  = shader.getInfoLog();
     if (!result.ok) {
