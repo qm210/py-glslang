@@ -417,25 +417,10 @@ public:
         return false;
     }
 
-    static std::vector<NodePtr> stripReturnTemporaries(std::vector<NodePtr> body) {
-        // Some GLSL quirk duplicates return nodes as additional node. Do not want.
-        for (size_t i = 1; i < body.size(); i++) {
-            auto* ret = body[i - 1]->data_if<ReturnNode>();
-            if (!ret) {
-                continue;
-            }
-            if (nodesEqual(ret->value, body[i])) {
-                body.erase(body.begin() + i);
-                i--;
-            }
-        }
-        return body;
-    }
-
     static FunctionParts splitFunction(const std::vector<NodePtr>& children)
     {
         FunctionParts result;
-        int bodyIndex = 0;
+        int index = 0;
         if (children.size() >= 2) {
             if (auto *seq = children[0]->data_if<SequenceNode>()) {
                 for (auto& param : seq->statements) {
@@ -446,16 +431,15 @@ public:
                     }
                 }
             }
-            bodyIndex = 1;
+            index = 1;
         }
-        if (bodyIndex < children.size()) {
-            if (auto* seq = children[bodyIndex]->data_if<SequenceNode>()) {
+        if (index < children.size()) {
+            if (auto* seq = children[index]->data_if<SequenceNode>()) {
                 result.body = seq->statements;
             } else {
-                result.body = { children[bodyIndex] };
+                result.body = { children[index] };
             }
         }
-        result.body = stripReturnTemporaries(std::move(result.body));
         return result;
     }
 
@@ -493,6 +477,7 @@ public:
             auto children = pop();
             switch (n->getOp()) {
                 case EOpFunction: {
+                    printf("EOpFunction %s children:%zu\n", n->getName().c_str(), children.size());
                     auto [params, body] =
                             splitFunction(children);
                     addNode<FunctionNode>(
@@ -513,7 +498,6 @@ public:
                     break;
                 case EOpParameters:
                 case EOpSequence:
-                    dumpSequence(n);
                     addNode<SequenceNode>(
                             n,
                             std::move(children)
@@ -615,10 +599,10 @@ public:
                 addNode<CaseNode>(n, nullptr);
                 break;
             default:
-                printf("Ignore Branch FlowOp %d\n", n->getFlowOp());
-                break;
+                printf("Unhandled Branch FlowOp %d\n", n->getFlowOp());
+                return true;
         }
-        return true;
+        return false;
     }
 
 };

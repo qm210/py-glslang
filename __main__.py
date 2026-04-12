@@ -7,7 +7,7 @@ import pyglslang as pyglsl
 
 def write_node(node: pyglsl.Node, level=0, previous="") -> str:
     indent = level * 2 * " "
-    result = f"{indent}{node.type} \"{node.name}\" ({node.kind})"
+    result = f"[{node.kind}] {indent}{node.typeName} \"{node.name}\" ({node.value})"
     if previous:
         result = f"{previous}\n{result}"
     for child in node.children:
