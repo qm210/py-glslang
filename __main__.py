@@ -1,11 +1,15 @@
-import sys
 from argparse import ArgumentParser
 
-sys.path.insert(0, "build")
-import pyglslang as pyglsl
+# 3 Options to find our module:
+# a) install module globally per pip
+# b) have the .pyd/.so placed next to the .py
+# c) have the .pyd/.so found in sys.path:
+# import sys
+# sys.path.insert(0, "build")
+import pyglslang as glsl
 
 
-def write_node(node: pyglsl.Node, level=0, previous="") -> str:
+def write_node(node: glsl.Node, level=0, previous="") -> str:
     indent = level * 2 * " "
     result = f"[{node.kind}] {indent}{node.typeName} \"{node.name}\" ({node.value})"
     if previous:
@@ -15,21 +19,16 @@ def write_node(node: pyglsl.Node, level=0, previous="") -> str:
     return result
 
 
-def render(root: pyglsl.Node):
-    return "TODO"
-
-
 def run(args):
     with open(args.shader, "r", encoding="utf-8") as f:
         source = f.read()
 
-    result = pyglsl.parse(source)
+    result = glsl.parse(source)
     if result.ok:
         print("Parse OK")
-        ast = pyglsl.simplify(result.node)
-        code = pyglsl.emit(ast)
+        ast = glsl.simplify(result.node)
+        code = glsl.emit(ast)
         ast_printed = write_node(ast)
-        written = render(ast)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:
                 f.write(ast_printed)

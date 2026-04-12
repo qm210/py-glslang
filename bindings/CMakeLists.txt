@@ -1,3 +1,5 @@
+set(OUTPUT_DIR "${CMAKE_BINARY_DIR}" CACHE PATH "Directory for .pyd/.so build")
+
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 if(DEFINED Python3_EXECUTABLE)
     set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE} CACHE FILEPATH "" FORCE)
@@ -11,23 +13,25 @@ execute_process(
 )
 find_package(pybind11 CONFIG REQUIRED)
 
-pybind11_add_module(pyglslang
-    module.cpp
-)
-target_include_directories(pyglslang PUBLIC
+pybind11_add_module(pyglslang module.cpp)
+
+target_include_directories(pyglslang
+    PUBLIC
     ${pybind11_INCLUDE_DIRS}
 )
-target_link_libraries(pyglslang PRIVATE
+target_link_libraries(pyglslang
+    PRIVATE
     pybind11::module
     glslang_nodes
 )
 
+message("OUTPUT " ${OUTPUT_DIR})
 set_target_properties(pyglslang PROPERTIES
     CXX_STANDARD                        17
-    RUNTIME_OUTPUT_DIRECTORY            "${CMAKE_BINARY_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE    "${CMAKE_BINARY_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG      "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY            "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE    "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG      "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY            "${OUTPUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG      "${OUTPUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE    "${OUTPUT_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY            "${OUTPUT_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG      "${OUTPUT_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE    "${OUTPUT_DIR}"
 )

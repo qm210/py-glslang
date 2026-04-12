@@ -1,181 +1,30 @@
 #ifndef PYGLSLANG_TRAVERSER_H
 #define PYGLSLANG_TRAVERSER_H
 
+#include <glslang/Include/intermediate.h>
+#include <glslang/MachineIndependent/localintermediate.h>
 #include <string>
 #include <vector>
 #include <memory>
 #include <sstream>
 #include <iomanip>
-#include <glslang/Include/intermediate.h>
-#include <glslang/MachineIndependent/localintermediate.h>
 
 #include "Node.h"
-#include "op_str.h"
+#include "NodeSource.h"
+#include "parse_op.h"
+#include "parse_type.h"
+#include "parse_const.h"
 
 using namespace glslang;
 
-static std::string precisionQualifier(const TType& t) {
-    switch (t.getQualifier().precision) {
-        case EpqLow: return "lowp";
-        case EpqMedium: return "mediump";
-        case EpqHigh: return "highp";
-        default: return "";
-    }
-}
-
-static std::string basicType(const TType& t) {
-    switch (t.getBasicType()) {
-        case EbtFloat: return "float";
-        case EbtDouble: return "double";
-        case EbtInt: return "int";
-        case EbtUint: return "uint";
-        case EbtBool: return "bool";
-        case EbtVoid: return "void";
-        default: return "";
-    }
-}
-
-static std::string typePrefix(const TType& t) {
-    switch (t.getBasicType()) {
-        case EbtDouble: return "d";
-        case EbtInt: return "i";
-        case EbtUint: return "u";
-        case EbtBool: return "b";
-        default: return "";
-    }
-}
-
-static inline const char oneDigit(int digit) {
-    return '0' + digit;
-}
-
-static std::string typeStr(const TType& t) {
-    std::string s = precisionQualifier(t);
-    if (!s.empty()) {
-        s += " ";
-    }
-    if (auto storage = t.getStorageQualifierString()) {
-        s += std::string(storage) + " ";
-    }
-
-    // TODO integrate these:
-    auto quali = t.getQualifier();
-    int location = quali.hasLocation() ? quali.layoutLocation : -1;
-    auto complete = t.getCompleteString();
-    bool isUniform = quali.isUniform();
-    bool isConst = quali.storage == EvqConst;
-    bool isGlobal = quali.storage == EvqGlobal;
-    int binding = quali.hasBinding() ? quali.layoutBinding : -1;
-    int set = quali.hasSet() ? quali.layoutSet : -1;
-
-    if (t.isStruct()) {
-        s += t.getTypeName().c_str();
-        return s;
-    }
-    else if (t.isMatrix()) {
-        char cols = oneDigit(t.getMatrixCols());
-        char rows = oneDigit(t.getMatrixRows());
-        s += typePrefix(t) + "mat" + cols;
-        if (cols != rows) {
-            s += 'x' + rows;
-        }
-        return s;
-    }
-    else if (t.isVector()) {
-        s += typePrefix(t) + "vec" + oneDigit(t.getVectorSize());
-        return s;
-    }
-
-    std::string base = basicType(t);
-    if (base.empty()) {
-        return s + std::string(t.getCompleteString().c_str());
-    } else {
-        s += base;
-    }
-
-    if (t.isArray()) {
-        for (int i = 0; i < (int)t.getArraySizes()->getNumDims(); ++i) {
-            int dim = t.getArraySizes()->getDimSize(i);
-            if (dim == 0) {
-                s += "[]";
-            } else {
-                s += "[" + std::to_string(dim) + "]";
-            }
-        }
-    }
-
-    return s;
-}
-
-static std::string formatConstant(TIntermConstantUnion* n) {
-    const TConstUnionArray& c = n->getConstArray();
-    const TType& t = n->getType();
-
-    auto scalar = [&](int i) -> std::string {
-        switch (t.getBasicType()) {
-            case EbtFloat: {
-                double v = c[i].getDConst();
-                std::ostringstream ss;
-                ss << std::setprecision(8) << v;
-                std::string s = ss.str();
-                if (s.find('.') == std::string::npos
-                    && s.find('e') == std::string::npos) {
-                    s += ".0";
-                }
-                return s;
-            }
-            case EbtDouble: {
-                std::ostringstream ss;
-                ss << std::setprecision(17) << c[i].getDConst() << "lf";
-                return ss.str();
-            }
-            case EbtInt:
-                return std::to_string(c[i].getIConst());
-            case EbtUint:
-                return std::to_string(c[i].getUConst()) + "u";
-            case EbtBool:
-                return c[i].getBConst() ? "true" : "false";
-            default:
-                return "?";
-        }
-    };
-
-    if (t.isScalar()) {
-        return scalar(0);
-    }
-
-    int count = t.isMatrix()
-            ? t.getMatrixCols() * t.getMatrixRows()
-            : t.getVectorSize();
-    std::string s = typeStr(t) + "(";
-    for (int i = 0; i < count; ++i) {
-        if (i > 0) {
-            s += ", ";
-        }
-        s += scalar(i);
-    }
-    s += ")";
-    return s;
-}
-
-static NodeSource extract(TIntermNode* n, const TIntermediate& intermediate) {
-    const TSourceLoc& loc = n->getLoc();
-    NodeSource src;
-    src.line = loc.line;
-    src.column = loc.column;
-    const auto& sources = intermediate.getSourceText();
-    if (!sources.empty()) {
-        std::istringstream ss(sources);
-        std::string line;
-        int current = 1;
-        while (std::getline(ss, line)) {
-            if (current++ == loc.line) {
-                src.code = line;
-                break;
-            }
-        }
-    }
-    return src;
+static bool isGlobal(TIntermTyped* n) {
+    const auto& storage =
+            n->getType().getQualifier().storage;
+    return storage == EvqUniform
+        || storage == EvqConst
+        || storage == EvqGlobal
+        || storage == EvqVaryingOut
+        || storage == EvqVaryingIn;
 }
 
 struct Traverser : public TIntermTraverser {
@@ -187,24 +36,26 @@ private:
         return stack.back();
     }
 
+    NodePtrs pop() {
+        auto vec = std::move(top());
+        stack.pop_back();
+        return vec;
+    }
+
     void pushStack() {
         stack.push_back({});
     }
 
     template <typename T, typename... Args>
     void addNode(TIntermNode* n, Args&&... args) {
-        auto node = Node::make<T>(src(n), std::forward<Args>(args)...);
+        NodePtr node = Node::make<T>(
+                src(n), std::forward<Args>(args)...
+        );
         top().push_back(node);
     }
 
-    NodePtrs pop() {
-        auto v = std::move(stack.back());
-        stack.pop_back();
-        return v;
-    }
-
     NodeSource src(TIntermNode* n) {
-        return extract(n, intermediate);
+        return NodeSource::find(n, intermediate);
     }
 
     NodePtrs traverseChildren(TIntermNode* n) {
@@ -216,10 +67,6 @@ private:
         return pop();
     }
 
-    NodePtr first(NodePtrs vec) {
-        return vec.empty() ? nullptr: vec.front();
-    }
-
 public:
     explicit Traverser(const TIntermediate& intermediate)
         : TIntermTraverser(true, false, true)
@@ -228,7 +75,7 @@ public:
         pushStack();
     }
 
-    NodePtr root() {
+    NodePtr build() {
         auto top = first(pop());
         if (!top) {
             return nullptr;
@@ -237,17 +84,11 @@ public:
         if (!sn) {
             return nullptr;
         }
-        bool globalsFound = false;
         RootNode node{};
         for (auto& child: sn->statements) {
             if (auto *cn = child->data_if<ConstructNode>()) {
-                if (Node::all_are<SymbolNode>(cn->args)) {
-                    if (globalsFound) {
-                        fprintf(stderr, "globals found twice! shouldn't be.\n");
-                    } else {
-                        node.globals = std::move(cn->args);
-                    }
-                    globalsFound = true;
+                if (Node::only_of<SymbolNode, DeclareNode>(cn->args)) {
+                    moveAfter(node.globals, std::move(cn->args));
                     continue;
                 }
             }
@@ -258,12 +99,25 @@ public:
 
     void visitSymbol(TIntermSymbol* n) override {
         auto name = std::string(n->getName().c_str());
-        auto type = typeStr(n->getType());
-        addNode<SymbolNode>(
-                n,
-                name,
-                type
-        );
+        if (isGlobal(n)) {
+            const TType& t = n->getType();
+            std::string storage(t.getStorageQualifierString());
+            std::string full(t.getCompleteString(true));
+            addNode<DeclareNode>(
+                    n,
+                    name,
+                    typeStr(t),
+                    storage,
+                    nullptr, // values get initialized elsewhere
+                    full
+            );
+        } else {
+            addNode<SymbolNode>(
+                    n,
+                    name,
+                    typeStr(n->getType())
+            );
+        }
     }
 
     void visitConstantUnion(TIntermConstantUnion* n) override {
@@ -273,7 +127,7 @@ public:
         );
     }
 
-    TIntermSymbol* declarationSymbol(TIntermBinary* n) {
+    static TIntermSymbol* declarationSymbol(TIntermBinary* n) {
         if (n->getOp() != EOpAssign) {
             return nullptr;
         }
@@ -288,16 +142,25 @@ public:
         return nullptr;
     }
 
+    /*
+     * Note: the bool return value means (only for EvPreVisit)
+     * true: automatically traverse the children afterwards
+     * false: no automatic traversal, need to do manually then
+     *        -> will also suppress EvPostVisit!
+     */
+
     bool visitBinary(TVisit visit, TIntermBinary* n) override {
         if (visit == EvPreVisit) {
             pushStack();
         } else if (visit == EvPostVisit) {
             auto children = pop();
-            if (auto declSymbol = declarationSymbol(n)) {
+            if (auto decl = declarationSymbol(n)) {
+                auto& type = decl->getType();
                 addNode<DeclareNode>(
                         n,
-                        typeStr(declSymbol->getType()),
-                        std::string(declSymbol->getName()),
+                        std::string(decl->getName()),
+                        typeStr(type),
+                        type.getStorageQualifierString(),
                         children[1]
                 );
             } else {
@@ -312,36 +175,29 @@ public:
         return true;
     }
 
-    /*
-     * Note: the bool return value means (only for EvPreVisit)
-     * true: automatically traverse the children afterwards
-     * false: no automatic traversal, need to do manually then
-     *        -> will also suppress EvPostVisit!
-     */
-
     bool visitUnary(TVisit visit, TIntermUnary* n) override {
         if (visit == EvPreVisit) {
             pushStack();
-        } else if (visit == EvPostVisit) {
-            auto children = pop();
-            auto op = n->getOp();
-            if (op == EOpConvNumeric) {
-                auto typeName = typeStr(n->getType());
-                addNode<ConstructNode>(
-                        n,
-                        typeName,
-                        std::move(children)
-                );
-                return true;
-            }
-            addNode<UnaryNode>(
-                    n,
-                    opStr(op),
-                    children[0],
-                    op == EOpPostIncrement || op == EOpPostDecrement,
-                    builtinName(op) != nullptr
-            );
+            return true;
         }
+        auto children = pop();
+        auto op = n->getOp();
+        if (op == EOpConvNumeric) {
+            auto typeName = typeStr(n->getType());
+            addNode<ConstructNode>(
+                    n,
+                    typeName,
+                    std::move(children)
+            );
+            return true;
+        }
+        addNode<UnaryNode>(
+                n,
+                opStr(op),
+                children[0],
+                op == EOpPostIncrement || op == EOpPostDecrement,
+                builtinName(op) != nullptr
+        );
         return true;
     }
 
@@ -373,7 +229,7 @@ public:
         }
         if (auto* ca = a->data_if<CallNode>()) {
             auto* cb = b->data_if<CallNode>();
-            if (ca->functionName != cb->functionName)
+            if (ca->funcName != cb->funcName)
                 return false;
             if (ca->args.size() != cb->args.size())
                 return false;
@@ -401,7 +257,9 @@ public:
                 for (auto& param : seq->statements) {
                     if (auto* sym = param->data_if<SymbolNode>()) {
                         result.params.push_back({
-                            sym->typeName, sym->name
+                            sym->typeName,
+                            sym->name,
+                            sym->storage,
                         });
                     }
                 }
@@ -421,52 +279,52 @@ public:
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
         if (visit == EvPreVisit) {
             pushStack();
-        } else if (visit == EvPostVisit) {
-            auto children = pop();
-            switch (n->getOp()) {
-                case EOpFunction: {
-                    auto name = actualName(n);
-                    auto [params, body] =
-                            splitFunction(children);
-                    addNode<FunctionNode>(
-                            n,
-                            typeStr(n->getType()),
-                            name,
-                            std::move(params),
-                            std::move(body)
-                    );
-                    break;
-                }
-                case EOpFunctionCall:
+            return true;
+        }
+        auto children = pop();
+        switch (n->getOp()) {
+            case EOpFunction: {
+                auto name = actualName(n);
+                auto [params, body] =
+                        splitFunction(children);
+                addNode<FunctionNode>(
+                        n,
+                        typeStr(n->getType()),
+                        name,
+                        std::move(params),
+                        std::move(body)
+                );
+                break;
+            }
+            case EOpFunctionCall:
+                addNode<CallNode>(
+                        n,
+                        actualName(n),
+                        std::move(children)
+                );
+                break;
+            case EOpParameters:
+            case EOpSequence:
+                addNode<SequenceNode>(
+                        n,
+                        std::move(children)
+                );
+                break;
+            default:
+                if (const char* builtin = builtinName(n->getOp())) {
                     addNode<CallNode>(
                             n,
-                            actualName(n),
+                            std::string(builtin),
                             std::move(children)
                     );
-                    break;
-                case EOpParameters:
-                case EOpSequence:
-                    addNode<SequenceNode>(
+                } else {
+                    addNode<ConstructNode>(
                             n,
+                            typeStr(n->getType()),
                             std::move(children)
                     );
-                    break;
-                default:
-                    if (const char* builtin = builtinName(n->getOp())) {
-                        addNode<CallNode>(
-                                n,
-                                std::string(builtin),
-                                std::move(children)
-                        );
-                    } else {
-                        addNode<ConstructNode>(
-                                n,
-                                typeStr(n->getType()),
-                                std::move(children)
-                        );
-                    }
-                    break;
-            }
+                }
+                break;
         }
         return true;
     }

@@ -1,12 +1,12 @@
 #ifndef PYGLSLANG_NODE_H
 #define PYGLSLANG_NODE_H
 
-#include <glslang/MachineIndependent/localintermediate.h>
 #include <glslang/Include/intermediate.h>
+#include <glslang/MachineIndependent/localintermediate.h>
 #include <memory>
 #include <vector>
 #include <string>
-#include <unordered_set>
+#include "NodeSource.h"
 
 struct Node;
 using NodePtr = std::shared_ptr<Node>;
@@ -15,6 +15,12 @@ using NodePtrs = std::vector<NodePtr>;
 struct SymbolNode {
     std::string name;
     std::string typeName;
+    std::string storage;
+};
+
+struct DeclareNode: SymbolNode {
+    NodePtr init;
+    std::string fullQualifier;
 };
 
 struct ConstantNode {
@@ -27,12 +33,6 @@ struct BinaryNode {
     NodePtr rhs;
 };
 
-struct DeclareNode {
-    std::string typeName;
-    std::string name;
-    NodePtr value;
-};
-
 struct UnaryNode {
     std::string op;
     NodePtr operand;
@@ -41,7 +41,7 @@ struct UnaryNode {
 };
 
 struct CallNode {
-    std::string functionName;
+    std::string funcName;
     NodePtrs args;
 };
 
@@ -54,17 +54,21 @@ struct SequenceNode {
     NodePtrs statements;
 };
 
-using TypeNamePair = std::pair<std::string, std::string>;
+struct FunctionParam {
+    std::string type;
+    std::string name;
+    std::string storage;
+};
 
 struct FunctionParts {
-    std::vector<TypeNamePair> params;
+    std::vector<FunctionParam> params;
     NodePtrs body;
 };
 
 struct FunctionNode {
     std::string returnType;
     std::string name;
-    std::vector<TypeNamePair> params;
+    std::vector<FunctionParam> params;
     NodePtrs body;
 };
 
@@ -124,12 +128,6 @@ using NodeVariant = std::variant<
         DiscardNode,
         RootNode>;
 
-struct NodeSource {
-    int line;
-    int column;
-    std::string code;
-};
-
 struct Node {
     NodeVariant data;
     NodeSource src;
@@ -153,81 +151,8 @@ struct Node {
         return std::get_if<T>(&data);
     }
 
-    std::string kind() const {
-        return std::visit([](auto&& n) -> std::string {
-            using T = std::decay_t<decltype(n)>;
-            if constexpr (std::is_same_v<T, SymbolNode>)
-                return "Symbol";
-            if constexpr (std::is_same_v<T, ConstantNode>)
-                return "Constant";
-            if constexpr (std::is_same_v<T, DeclareNode>)
-                return "Declare";
-            if constexpr (std::is_same_v<T, BinaryNode>)
-                return "Binary";
-            if constexpr (std::is_same_v<T, UnaryNode>)
-                return "Unary";
-            if constexpr (std::is_same_v<T, CallNode>)
-                return "Call";
-            if constexpr (std::is_same_v<T, ConstructNode>)
-                return "Construct";
-            if constexpr (std::is_same_v<T, SequenceNode>)
-                return "Sequence";
-            if constexpr (std::is_same_v<T, FunctionNode>)
-                return "Function";
-            if constexpr (std::is_same_v<T, IfNode>)
-                return "If";
-            if constexpr (std::is_same_v<T, SwitchNode>)
-                return "Switch";
-            if constexpr (std::is_same_v<T, CaseNode>)
-                return "Case";
-            if constexpr (std::is_same_v<T, LoopNode>)
-                return "Loop";
-            if constexpr (std::is_same_v<T, ReturnNode>)
-                return "Return";
-            if constexpr (std::is_same_v<T, BreakNode>)
-                return "Break";
-            if constexpr (std::is_same_v<T, ContinueNode>)
-                return "Continue";
-            if constexpr (std::is_same_v<T, DiscardNode>)
-                return "Discard";
-            if constexpr (std::is_same_v<T, RootNode>)
-                return "Root";
-            return "Unknown";
-        }, data);
-    }
-
-    std::string label() const {
-        return std::visit([](auto&& n) -> std::string {
-            using T = std::decay_t<decltype(n)>;
-            if constexpr (std::is_same_v<T, SymbolNode>)
-                return n.name;
-            if constexpr (std::is_same_v<T, ConstantNode>)
-                return n.value;
-            if constexpr (std::is_same_v<T, DeclareNode>)
-                return n.name;
-            if constexpr (std::is_same_v<T, BinaryNode>)
-                return n.op;
-            if constexpr (std::is_same_v<T, UnaryNode>)
-                return n.op;
-            if constexpr (std::is_same_v<T, CallNode>)
-                return n.functionName;
-            if constexpr (std::is_same_v<T, ConstructNode>)
-                return n.typeName;
-            if constexpr (std::is_same_v<T, SequenceNode>)
-                return std::to_string(n.statements.size());
-            if constexpr (std::is_same_v<T, FunctionNode>)
-                return n.name;
-            if constexpr (std::is_same_v<T, IfNode>)
-                return n.condition->label();
-            if constexpr (std::is_same_v<T, SwitchNode>)
-                return n.condition->label();
-            if constexpr (std::is_same_v<T, CaseNode>)
-                return n.label->label();
-            if constexpr (std::is_same_v<T, LoopNode>)
-                return n.condition->label();
-            return "";
-        }, data);
-    }
+    std::string kind() const;
+    std::string label() const;
 
     template <typename T> [[nodiscard]]
     bool is() const {
@@ -239,8 +164,8 @@ struct Node {
         return !is<T>();
     }
 
-    template <typename T> [[nodiscard]]
-    static bool all_are(const NodePtrs& vec) {
+    template <typename... Ts> [[nodiscard]]
+    static bool only_of(const NodePtrs& vec) {
         if (vec.empty()) {
             return false;
         }
@@ -248,11 +173,33 @@ struct Node {
                 vec.begin(),
                 vec.end(),
                 [](const NodePtr& n) {
-                    return n->is<T>();
+                    return (n->is<Ts>() || ...);
                 });
     }
 };
 
 std::shared_ptr<Node> simplify(const NodePtr node);
+
+template<typename T>
+T* data_of(const NodePtr& node) {
+    return node->data_if<T>();
+}
+
+template<typename T>
+std::shared_ptr<T> ptr_to_data(const NodePtr& node) {
+    return std::shared_ptr<T>(node, node->data_if<T>());
+}
+
+inline NodePtr first(NodePtrs vec) {
+    return vec.empty() ? nullptr : vec.front();
+}
+
+inline void moveAfter(NodePtrs& target, NodePtrs&& nodes) {
+    target.insert(
+            target.end(),
+            std::make_move_iterator(nodes.begin()),
+            std::make_move_iterator(nodes.end())
+    );
+}
 
 #endif //PYGLSLANG_NODE_H

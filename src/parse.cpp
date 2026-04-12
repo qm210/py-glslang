@@ -38,7 +38,7 @@ Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
     glslang::TIntermediate* intermediate = program.getIntermediate(stage);
     Traverser traverser(*intermediate);
     intermediate->getTreeRoot()->traverse(&traverser);
-    result.node = traverser.root();
+    result.node = traverser.build();
     return result;
 }
 

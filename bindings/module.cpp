@@ -9,6 +9,7 @@
 namespace py = pybind11;
 
 #include "module.h"
+#include "NodeSource.h"
 
 PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
@@ -51,7 +52,7 @@ PYBIND11_MODULE(pyglslang, m) {
                 if (auto *s = n.data_if<FunctionNode>())
                     return s->name;
                 if (auto *s = n.data_if<CallNode>())
-                    return s->functionName;
+                    return s->funcName;
                 return "";
             })
             .def_property_readonly("typeName", [](Node& n) -> std::string {
@@ -108,7 +109,7 @@ PYBIND11_MODULE(pyglslang, m) {
                 if (auto *s = n.data_if<BinaryNode>())
                     return NodePtrs{ s->lhs, s->rhs };
                 if (auto *s = n.data_if<DeclareNode>())
-                    return NodePtrs{ s->value };
+                    return NodePtrs{ s->init };
                 return {};
             })
             .def_property_readonly("childrenElse", [](Node& n) -> NodePtrs {
@@ -116,14 +117,20 @@ PYBIND11_MODULE(pyglslang, m) {
                     return s->falseBranch;
                 if (auto *s = n.data_if<RootNode>())
                     return s->globals;
-                    // <-- TODO: should have its own thing...
                 return {};
             });
+
+    py::class_<RootNode>(m, "RootNode")
+            .def_readonly("children", &RootNode::children)
+            .def_readonly("globals", &RootNode::globals);
 
     py::class_<Parsed>(m, "Parsed")
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
-        .def_readonly("node", &Parsed::node);
+        .def_readonly("node", &Parsed::node)
+        .def("rootnode", [](const Parsed& p) -> RootNode {
+            return *data_of<RootNode>(p.node);
+        });
 
     m.def(
             "parse",

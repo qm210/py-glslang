@@ -24,9 +24,13 @@ std::string emitList(const NodePtrs& nodes, const std::string& separator, int le
     return result;
 }
 
-std::string emitBlock(const NodePtrs& statements, int level) {
+std::string emitArgs(const NodePtrs& nodes, int level) {
+    return "(" + emitList(nodes, ", ", level) + ")";
+}
+
+std::string emitBlock(const NodePtrs& nodes, int level) {
     std::string result;
-    for (auto& each : statements) {
+    for (auto& each : nodes) {
         result += indent(level) + emit(each, level);
         if (needsSemicolon(each)) {
             result += ";";
@@ -36,9 +40,25 @@ std::string emitBlock(const NodePtrs& statements, int level) {
     return result;
 }
 
-template<typename T>
-T* data_if(const NodePtr& node) {
-    return node->data_if<T>();
+std::string emitGlobals(const NodePtrs& nodes, int level) {
+    std::string result;
+    for (auto& each : nodes) {
+        result += indent(level);
+        auto decl = each->data_if<DeclareNode>();
+        result += decl->fullQualifier + " " + decl->name;
+        if (decl->init) {
+            result += "=" + emit(decl->init, level);
+        }
+        result += ";\n";
+    }
+    return result;
+}
+
+std::string emitBody(const NodePtrs& nodes, int level) {
+    return "{\n"
+           + emitBlock(nodes, level + 1)
+           + indent(level)
+           + "}";
 }
 
 std::string swizzleOf(const NodePtr& node) {
@@ -47,7 +67,7 @@ std::string swizzleOf(const NodePtr& node) {
 
     std::string res;
     auto appendIndex = [&res](const NodePtr& node) {
-        if (auto *c = data_if<ConstantNode>(node)) {
+        if (auto *c = data_of<ConstantNode>(node)) {
             int index = std::stoi(c->value);
             if (index >= 0 && index < 4) {
                 res += swizzleSet[index];
@@ -55,7 +75,7 @@ std::string swizzleOf(const NodePtr& node) {
         }
     };
 
-    if (auto *seq = data_if<SequenceNode>(node)) {
+    if (auto *seq = data_of<SequenceNode>(node)) {
         for (auto& s : seq->statements) {
             appendIndex(s);
         }
@@ -69,7 +89,6 @@ std::string emit(const NodePtr& node, int level) {
     if (!node) {
         return "";
     }
-
     return std::visit([&](auto&& n) -> std::string {
         using T = std::decay_t<decltype(n)>;
         if constexpr (std::is_same_v<T, SymbolNode>) {
@@ -80,8 +99,8 @@ std::string emit(const NodePtr& node, int level) {
         }
         if constexpr (std::is_same_v<T, DeclareNode>) {
             std::string result = n.typeName + " " + n.name;
-            if (n.value) {
-                result += "=" + emit(n.value, level);
+            if (n.init) {
+                result += "=" + emit(n.init, level);
             }
             return result;
         }
@@ -110,16 +129,10 @@ std::string emit(const NodePtr& node, int level) {
             }
         }
         if constexpr (std::is_same_v<T, CallNode>) {
-            return n.functionName
-                + "("
-                + emitList(n.args, ", ", level)
-                + ")";
+            return n.funcName + emitArgs(n.args, level);
         }
         if constexpr (std::is_same_v<T, ConstructNode>) {
-            return n.typeName
-                + "("
-                + emitList(n.args, ", ", level)
-                + ")";
+            return n.typeName + emitArgs(n.args, level);
         }
         if constexpr (std::is_same_v<T, SequenceNode>) {
             return emitBlock(n.statements, level);
@@ -130,37 +143,30 @@ std::string emit(const NodePtr& node, int level) {
                 if (i > 0) {
                     params += ", ";
                 }
-                params += n.params[i].first + " " + n.params[i].second;
+                const auto& param = n.params[i];
+                if (!param.storage.empty()
+                    && param.storage != "in") {
+                    params += param.storage + " ";
+                }
+                params += param.type + " " + param.name;
             }
-            return n.returnType
-                + " "
-                + n.name
-                + "("
-                + params
-                + ") {\n"
-                + emitBlock(n.body, level + 1)
-                + indent(level)
-                + "}\n";
+            return n.returnType + " " + n.name
+                + "(" + params + ") "
+                + emitBody(n.body, level) + "\n";
         }
         if constexpr (std::is_same_v<T, IfNode>) {
             std::string result =
-                    "if (" + emit(n.condition, level) + ") {\n"
-                    + emitBlock(n.trueBranch, level + 1)
-                    + indent(level)
-                    + "}";
+                    "if (" + emit(n.condition, level) + ") "
+                    + emitBody(n.trueBranch, level);
             if (!n.falseBranch.empty()) {
-                result += " else {\n"
-                        + emitBlock(n.falseBranch, level + 1)
-                        + indent(level)
-                        + "}";
+                result += " else "
+                        + emitBody(n.falseBranch, level);
             }
             return result;
         }
         if constexpr (std::is_same_v<T, SwitchNode>) {
-            return "switch (" + emit(n.condition, level) + ") {\n"
-                    + emitBlock(n.cases, level + 1)
-                    + indent(level)
-                    + "}";
+            return "switch (" + emit(n.condition, level) + ") "
+                    + emitBody(n.cases, level);
         }
         if constexpr (std::is_same_v<T, CaseNode>) {
             std::string label = n.label
@@ -170,35 +176,25 @@ std::string emit(const NodePtr& node, int level) {
                     + emitBlock(n.body, level + 1);
         }
         if constexpr (std::is_same_v<T, LoopNode>) {
-            std::string body =
-                    "{\n"
-                    + emitBlock(n.body, level + 1)
-                    + indent(level)
-                    + "}";
+            std::string body = emitBody(n.body, level);
+            std::string cond = emit(n.condition, level);
             if (n.isDoWhile) {
-                return "do "
-                    + body
-                    + " while ("
-                    + emit(n.condition, level)
-                    + ")";
+                return "do " + body
+                    + " while (" + cond + ")";
             }
             if (n.increment) {
-                return "for (; "
-                    + emit(n.condition, level)
-                    + "; "
-                    + emit(n.increment, level)
-                    + ") "
+                std::string inc = emit(n.increment, level);
+                return "for (; " + cond + "; " + inc + ") "
                     + body;
             }
-            return "while ("
-                + emit(n.condition, level)
-                + ") "
-                + body;
+            return "while (" + cond + ") " + body;
         }
         if constexpr (std::is_same_v<T, ReturnNode>) {
-            return n.value
-                ? ("return " + emit(n.value, level))
-                : "return";
+            if (n.value) {
+                return "return " + emit(n.value, level);
+            } else {
+                return "return";
+            }
         }
         if constexpr (std::is_same_v<T, BreakNode>) {
             return "break";
@@ -210,7 +206,7 @@ std::string emit(const NodePtr& node, int level) {
             return "discard";
         }
         if constexpr (std::is_same_v<T, RootNode>) {
-            return emitBlock(n.globals, level)
+            return emitGlobals(n.globals, level)
                 + "\n"
                 + emitBlock(n.children, level);
         }
