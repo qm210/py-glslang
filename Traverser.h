@@ -83,15 +83,24 @@ static std::string opStr(TOperator op) {
         case EOpLogicalAnd: return "&&";
         case EOpLogicalOr: return "||";
         case EOpLogicalNot: return "!";
-        case EOpVectorSwizzle: return ".";
+        case EOpVectorSwizzle:
+            return ".";
         case EOpIndexDirect:
-        case EOpIndexIndirect: return "[]";
-        case EOpIndexDirectStruct: return ".";
+        case EOpIndexIndirect:
+            return "[]";
+        case EOpIndexDirectStruct:
+            return ".";
+        case EOpVectorTimesMatrix:
+        case EOpMatrixTimesVector:
+        case EOpVectorTimesScalar:
+        case EOpMatrixTimesScalar:
+            return "*";
         default: {
             if (const char* builtin = builtinName(op)) {
                 return builtin;
             }
-            return "op(" + std::to_string((int)op) + ")";
+            // Missing OP -- WIP TODO make sure these are complete!
+            return "[OP" + std::to_string((int)op) + "]";
         }
     }
 }
@@ -363,8 +372,9 @@ public:
             addNode<UnaryNode>(
                     n,
                     opStr(op),
+                    children[0],
                     op == EOpPostIncrement || op == EOpPostDecrement,
-                    children[0]
+                    builtinName(op) != nullptr
             );
         }
         return true;
@@ -540,18 +550,24 @@ public:
     }
 
     bool visitSwitch(TVisit visit, TIntermSwitch* n) override {
-        if (visit != EvPreVisit) {
+        if (visit == EvPreVisit) {
+            pushStack();
             return true;
         }
-        auto condition = first(traverseChildren(n->getCondition()));
-        pushStack();
-        for (auto *caseNode : n->getBody()->getSequence()) {
-            caseNode->traverse(this);
+        auto children = pop();
+        auto condition = std::move(children[0]);
+        auto body = children[1]->data_if<SequenceNode>();
+        auto seq = body->statements;
+        std::vector<NodePtr> cases;
+        for (size_t i = 0; i < seq.size() - 1; i += 2) {
+            auto caseNode = seq[i]->data_if<CaseNode>();
+            auto bodyNode = seq[i+1]->data_if<SequenceNode>();
+            caseNode->body = std::move(bodyNode->statements);
+            cases.push_back(seq[i]);
         }
-        auto cases = pop();
         addNode<SwitchNode>(
                 n,
-                condition,
+                std::move(condition),
                 std::move(cases)
         );
         return false;

@@ -34,8 +34,9 @@ struct DeclareNode {
 
 struct UnaryNode {
     std::string op;
-    bool postfix;
     NodePtr operand;
+    bool isPostfix;
+    bool isBuiltin;
 };
 
 struct CallNode {
@@ -218,6 +219,16 @@ struct Node {
                 return n.condition->label();
             return "";
         }, data);
+    }
+
+    template <typename T>
+    bool is() const {
+        return std::holds_alternative<T>(data);
+    }
+
+    template <typename T>
+    bool isnt() const {
+        return !is<T>();
     }
 };
 

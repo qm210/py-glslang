@@ -34,19 +34,23 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
             return Node::make<BinaryNode>(node->src, n.op, simplify(n.lhs), simplify(n.rhs));
         }
         if constexpr (std::is_same_v<T, UnaryNode>) {
-            return Node::make<UnaryNode>(node->src, n.op, n.postfix, simplify(n.operand));
+            return Node::make<UnaryNode>(node->src, n.op, simplify(n.operand), n.isPostfix, n.isBuiltin);
         }
         if constexpr (std::is_same_v<T, DeclareNode>) {
             return Node::make<DeclareNode>(node->src, n.typeName, n.name, simplify(n.value));
         }
         if constexpr (std::is_same_v<T, CallNode>) {
             std::vector<NodePtr> args;
-            for (auto& arg : n.args) args.push_back(simplify(arg));
+            for (auto& arg : n.args) {
+                args.push_back(simplify(arg));
+            }
             return Node::make<CallNode>(node->src, n.functionName, std::move(args));
         }
         if constexpr (std::is_same_v<T, ConstructNode>) {
             std::vector<NodePtr> args;
-            for (auto& arg : n.args) args.push_back(simplify(arg));
+            for (auto& arg : n.args) {
+                args.push_back(simplify(arg));
+            }
             return Node::make<ConstructNode>(node->src, n.typeName, std::move(args));
         }
         if constexpr (std::is_same_v<T, IfNode>) {
@@ -63,6 +67,26 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
                     simplify(n.condition),
                     std::move(trueBranch),
                     std::move(falseBranch)
+            );
+        }
+        if constexpr (std::is_same_v<T, SwitchNode>) {
+            std::vector<NodePtr> cases;
+            for (auto& s : n.cases) {
+                auto& caseNode = std::get<CaseNode>(s->data);
+                std::vector<NodePtr> body;
+                for (auto& b: caseNode.body) {
+                    body.push_back(simplify(b));
+                }
+                cases.push_back(Node::make<CaseNode>(
+                        s->src,
+                        simplify(caseNode.label),
+                        body
+                ));
+            }
+            return Node::make<SwitchNode>(
+                    node->src,
+                    simplify(n.condition),
+                    std::move(cases)
             );
         }
         if constexpr (std::is_same_v<T, LoopNode>) {
