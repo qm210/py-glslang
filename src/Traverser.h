@@ -329,8 +329,8 @@ public:
         return true;
     }
 
-    static std::string baseName(const char* mangledName) {
-        std::string s(mangledName);
+    static std::string actualName(TIntermAggregate* n) {
+        std::string s(n->getName());
         auto args = s.find('(');
         if (args != std::string::npos) {
             s.erase(args);
@@ -409,8 +409,7 @@ public:
             auto children = pop();
             switch (n->getOp()) {
                 case EOpFunction: {
-                    auto name = baseName(n->getName().c_str());
-                    printf("EOpFunction %s children:%zu\n", name.c_str(), children.size());
+                    auto name = actualName(n);
                     auto [params, body] =
                             splitFunction(children);
                     addNode<FunctionNode>(
@@ -425,7 +424,7 @@ public:
                 case EOpFunctionCall:
                     addNode<CallNode>(
                             n,
-                            std::string(n->getName().c_str()),
+                            actualName(n),
                             std::move(children)
                     );
                     break;

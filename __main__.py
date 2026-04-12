@@ -26,7 +26,7 @@ def run(args):
     result = pyglsl.parse(source)
     if result.ok:
         print("Parse OK")
-        ast = pyglsl.simplify(result.ast)
+        ast = pyglsl.simplify(result.node)
         code = pyglsl.emit(ast)
         ast_printed = write_node(ast)
         written = render(ast)
