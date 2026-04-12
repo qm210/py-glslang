@@ -124,7 +124,7 @@ PYBIND11_MODULE(pyglslang, m) {
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
         .def_readonly("debug", &Parsed::debug)
-        .def_readonly("ast", &Parsed::ast)
+        .def_readonly("ast", &Parsed::node)
         .def_readonly("spirv", &Parsed::spirv);
 
     m.def(

@@ -1,12 +1,19 @@
 #include "doctest.h"
 #include "module.h"
 
-TEST_CASE("parse some function") {
-    auto given = R"(
+TEST_CASE("parse some small shader") {
+    std::string given = R"(#version 450
+        layout(location=0) out vec4 outColor;
+        // out vec4 outColor;
+
         float hash12(vec2 p) {
             return fract(p.xy.x);
         }
+
+        void main() {
+        }
     )";
-    Parsed target = parse(given);
-    CHECK((target.ast != nullptr));
+    RootNode target = parse(given).root();
+    CHECK((target.children.size() == 1));
+    CHECK((target.globals.size() == 1));
 }

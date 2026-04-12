@@ -213,13 +213,19 @@ public:
     }
 
     NodePtr root() {
-        auto seq = pop();
+        auto top = first(pop());
+        if (!top) {
+            return nullptr;
+        }
+        auto sn = top->data_if<SequenceNode>();
+        if (!sn) {
+            return nullptr;
+        }
         bool globalsFound = false;
         RootNode node{};
-        for (auto& child: seq) {
+        for (auto& child: sn->statements) {
             if (auto *cn = child->data_if<ConstructNode>()) {
                 if (Node::all_are<SymbolNode>(cn->args)) {
-                    // should only happen once
                     if (globalsFound) {
                         fprintf(stderr, "globals found twice! shouldn't be.\n");
                     } else {
@@ -229,16 +235,18 @@ public:
                     continue;
                 }
             }
-            node.children.push_back(std::move(child));
+            node.children.push_back(child);
         }
         return Node::make<RootNode>({}, std::move(node));
     }
 
     void visitSymbol(TIntermSymbol* n) override {
+        auto name = std::string(n->getName().c_str());
+        auto type = typeStr(n->getType());
         addNode<SymbolNode>(
                 n,
-                std::string(n->getName().c_str()),
-                typeStr(n->getType())
+                name,
+                type
         );
     }
 

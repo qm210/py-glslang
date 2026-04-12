@@ -9,6 +9,7 @@
 #include <GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
+#include <stdexcept>
 
 #include "Node.h"
 
@@ -25,8 +26,17 @@ struct Parsed {
     bool ok = false;
     std::string info;
     std::string debug;
-    NodePtr ast;
+    NodePtr node;
     std::vector<uint32_t> spirv;
+
+    [[nodiscard]]
+    const RootNode& root() const {
+        auto *root = node->data_if<RootNode>();
+        if (!root) {
+            throw std::runtime_error("Parsing AST failed!");
+        }
+        return *root;
+    }
 };
 
 Parsed parse(const std::string& source, Stage = STAGE_FRAG);
