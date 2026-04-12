@@ -9,8 +9,6 @@
 #include <GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
-#include <pybind11/stl.h>
-#include <pybind11/pybind11.h>
 
 #include "Node.h"
 
@@ -27,11 +25,11 @@ struct Parsed {
     bool ok = false;
     std::string info;
     std::string debug;
-    std::shared_ptr<Node> ast;
+    NodePtr ast;
     std::vector<uint32_t> spirv;
 };
 
-Parsed parse(const std::string& source, Stage);
+Parsed parse(const std::string& source, Stage = STAGE_FRAG);
 
 std::string emit(const NodePtr& node, int level = 0);
 

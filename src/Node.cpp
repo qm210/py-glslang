@@ -8,7 +8,7 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
         using T = std::decay_t<decltype(n)>;
 
         if constexpr (std::is_same_v<T, SequenceNode>) {
-            std::vector<NodePtr> simplified;
+            NodePtrs simplified;
             for (auto& child : n.statements) {
                 auto s = simplify(child);
                 if (!s) continue;
@@ -23,7 +23,7 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
             return Node::make<SequenceNode>(node->src, std::move(simplified));
         }
         if constexpr (std::is_same_v<T, FunctionNode>) {
-            std::vector<NodePtr> body;
+            NodePtrs body;
             for (auto& stmt : n.body) {
                 auto s = simplify(stmt);
                 if (s) body.push_back(s);
@@ -40,25 +40,25 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
             return Node::make<DeclareNode>(node->src, n.typeName, n.name, simplify(n.value));
         }
         if constexpr (std::is_same_v<T, CallNode>) {
-            std::vector<NodePtr> args;
+            NodePtrs args;
             for (auto& arg : n.args) {
                 args.push_back(simplify(arg));
             }
             return Node::make<CallNode>(node->src, n.functionName, std::move(args));
         }
         if constexpr (std::is_same_v<T, ConstructNode>) {
-            std::vector<NodePtr> args;
+            NodePtrs args;
             for (auto& arg : n.args) {
                 args.push_back(simplify(arg));
             }
             return Node::make<ConstructNode>(node->src, n.typeName, std::move(args));
         }
         if constexpr (std::is_same_v<T, IfNode>) {
-            std::vector<NodePtr> trueBranch;
+            NodePtrs trueBranch;
             for (auto& s : n.trueBranch) {
                 trueBranch.push_back(simplify(s));
             }
-            std::vector<NodePtr> falseBranch;
+            NodePtrs falseBranch;
             for (auto& s : n.falseBranch) {
                 falseBranch.push_back(simplify(s));
             }
@@ -70,10 +70,10 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
             );
         }
         if constexpr (std::is_same_v<T, SwitchNode>) {
-            std::vector<NodePtr> cases;
+            NodePtrs cases;
             for (auto& s : n.cases) {
                 auto& caseNode = std::get<CaseNode>(s->data);
-                std::vector<NodePtr> body;
+                NodePtrs body;
                 for (auto& b: caseNode.body) {
                     body.push_back(simplify(b));
                 }
@@ -90,7 +90,7 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
             );
         }
         if constexpr (std::is_same_v<T, LoopNode>) {
-            std::vector<NodePtr> body;
+            NodePtrs body;
             for (auto& s : n.body) body.push_back(simplify(s));
             return Node::make<LoopNode>(
                     node->src,

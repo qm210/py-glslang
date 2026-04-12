@@ -10,6 +10,7 @@
 
 struct Node;
 using NodePtr = std::shared_ptr<Node>;
+using NodePtrs = std::vector<NodePtr>;
 
 struct SymbolNode {
     std::string name;
@@ -41,52 +42,52 @@ struct UnaryNode {
 
 struct CallNode {
     std::string functionName;
-    std::vector<NodePtr> args;
+    NodePtrs args;
 };
 
 struct ConstructNode {
     std::string typeName;
-    std::vector<NodePtr> args;
+    NodePtrs args;
 };
 
 struct SequenceNode {
-    std::vector<NodePtr> statements;
+    NodePtrs statements;
 };
 
 using TypeNamePair = std::pair<std::string, std::string>;
 
 struct FunctionParts {
     std::vector<TypeNamePair> params;
-    std::vector<NodePtr> body;
+    NodePtrs body;
 };
 
 struct FunctionNode {
     std::string returnType;
     std::string name;
     std::vector<TypeNamePair> params;
-    std::vector<NodePtr> body;
+    NodePtrs body;
 };
 
 struct IfNode {
     NodePtr condition;
-    std::vector<NodePtr> trueBranch;
-    std::vector<NodePtr> falseBranch;
+    NodePtrs trueBranch;
+    NodePtrs falseBranch;
 };
 
 struct CaseNode {
     NodePtr label;
-    std::vector<NodePtr> body;
+    NodePtrs body;
 };
 
 struct SwitchNode {
     NodePtr condition;
-    std::vector<NodePtr> cases;
+    NodePtrs cases;
 };
 
 struct LoopNode {
     NodePtr condition;
     NodePtr increment;
-    std::vector<NodePtr> body;
+    NodePtrs body;
     bool isDoWhile = false;
 };
 
@@ -97,6 +98,11 @@ struct ReturnNode {
 struct BreakNode {};
 struct ContinueNode {};
 struct DiscardNode {};
+
+struct RootNode {
+    NodePtrs globals;
+    NodePtrs children;
+};
 
 using NodeVariant = std::variant<
         SymbolNode,
@@ -115,12 +121,12 @@ using NodeVariant = std::variant<
         ReturnNode,
         BreakNode,
         ContinueNode,
-        DiscardNode
-        >;
+        DiscardNode,
+        RootNode>;
 
 struct NodeSource {
-    int line = -1;
-    int column = -1;
+    int line;
+    int column;
     std::string code;
 };
 
@@ -184,6 +190,8 @@ struct Node {
                 return "Continue";
             if constexpr (std::is_same_v<T, DiscardNode>)
                 return "Discard";
+            if constexpr (std::is_same_v<T, RootNode>)
+                return "Root";
             return "Unknown";
         }, data);
     }
@@ -221,14 +229,27 @@ struct Node {
         }, data);
     }
 
-    template <typename T>
+    template <typename T> [[nodiscard]]
     bool is() const {
         return std::holds_alternative<T>(data);
     }
 
-    template <typename T>
+    template <typename T> [[nodiscard]]
     bool isnt() const {
         return !is<T>();
+    }
+
+    template <typename T> [[nodiscard]]
+    static bool all_are(const NodePtrs& vec) {
+        if (vec.empty()) {
+            return false;
+        }
+        return std::all_of(
+                vec.begin(),
+                vec.end(),
+                [](const NodePtr& n) {
+                    return n->is<T>();
+                });
     }
 };
 

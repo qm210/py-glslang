@@ -1,14 +1,14 @@
-#include <pybind11/pybind11.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <string>
 #include <vector>
 #include <memory>
 
-#include "Node.h"
-#include "module.h"
-
+#include <pybind11/stl.h>
+#include <pybind11/pybind11.h>
 namespace py = pybind11;
+
+#include "module.h"
 
 PYBIND11_MODULE(pyglslang, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
@@ -86,7 +86,9 @@ PYBIND11_MODULE(pyglslang, m) {
                     return py::cast(s->label);
                 return py::none();
             })
-            .def_property_readonly("children", [](Node& n) -> std::vector<NodePtr> {
+            .def_property_readonly("children", [](Node& n) -> NodePtrs {
+                if (auto *s = n.data_if<RootNode>())
+                    return s->children;
                 if (auto *s = n.data_if<SequenceNode>())
                     return s->statements;
                 if (auto *s = n.data_if<CallNode>())
@@ -104,14 +106,17 @@ PYBIND11_MODULE(pyglslang, m) {
                 if (auto *s = n.data_if<LoopNode>())
                     return s->body;
                 if (auto *s = n.data_if<BinaryNode>())
-                    return std::vector<NodePtr>{ s->lhs, s->rhs };
+                    return NodePtrs{ s->lhs, s->rhs };
                 if (auto *s = n.data_if<DeclareNode>())
-                    return std::vector<NodePtr>{ s->value };
+                    return NodePtrs{ s->value };
                 return {};
             })
-            .def_property_readonly("childrenElse", [](Node& n) -> std::vector<NodePtr> {
+            .def_property_readonly("childrenElse", [](Node& n) -> NodePtrs {
                 if (auto *s = n.data_if<IfNode>())
                     return s->falseBranch;
+                if (auto *s = n.data_if<RootNode>())
+                    return s->globals;
+                    // <-- TODO: should have its own thing...
                 return {};
             });
 
@@ -131,13 +136,13 @@ PYBIND11_MODULE(pyglslang, m) {
     m.def(
             "simplify",
             &simplify,
-            py::arg("root")
+            py::arg("node")
     );
     m.def(
             "emit",
             [](const std::shared_ptr<Node>& node) {
                 return emit(node);
             },
-            py::arg("root")
+            py::arg("node")
     );
 }

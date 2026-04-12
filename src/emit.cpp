@@ -13,7 +13,7 @@ bool needsSemicolon(const NodePtr& node) {
         && node->isnt<CaseNode>();
 }
 
-std::string emitList(const std::vector<NodePtr>& nodes, const std::string& separator, int level) {
+std::string emitList(const NodePtrs& nodes, const std::string& separator, int level) {
     std::string result;
     for (size_t i = 0; i < nodes.size(); i++) {
         if (i > 0) {
@@ -24,7 +24,7 @@ std::string emitList(const std::vector<NodePtr>& nodes, const std::string& separ
     return result;
 }
 
-std::string emitBlock(const std::vector<NodePtr>& statements, int level) {
+std::string emitBlock(const NodePtrs& statements, int level) {
     std::string result;
     for (auto& each : statements) {
         result += indent(level) + emit(each, level);
@@ -208,6 +208,11 @@ std::string emit(const NodePtr& node, int level) {
         }
         if constexpr (std::is_same_v<T, DiscardNode>) {
             return "discard";
+        }
+        if constexpr (std::is_same_v<T, RootNode>) {
+            return emitBlock(n.globals, level)
+                + "\n"
+                + emitBlock(n.children, level);
         }
         return "/*" + node->src.code + "*/";
     }, node->data);
