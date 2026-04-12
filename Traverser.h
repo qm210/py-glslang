@@ -157,33 +157,71 @@ static const char* builtinName(TOperator op) {
         case EOpTranspose: return "transpose";
         case EOpDeterminant: return "determinant";
         case EOpMatrixInverse: return "inverse";
-        case EOpAll: return "all";
         case EOpAny: return "any";
+        case EOpAll: return "all";
         default: return nullptr;
     }
 }
 
 static std::string opStr(TOperator op) {
     switch (op) {
-        case EOpAssign: return "=";
-        case EOpAddAssign: return "+=";
-        case EOpSubAssign: return "-=";
-        case EOpMulAssign: return "*=";
-        case EOpDivAssign: return "/=";
+        case EOpNegative: return "-";
+        case EOpLogicalNot:
+        case EOpVectorLogicalNot:
+            return "!";
+        case EOpBitwiseNot: return "~";
+        case EOpPreIncrement:
+        case EOpPostIncrement:
+            return "++";
+        case EOpPostDecrement:
+        case EOpPreDecrement:
+            return "--";
         case EOpAdd: return "+";
         case EOpSub: return "-";
         case EOpMul: return "*";
         case EOpDiv: return "/";
-        case EOpNegative: return "-";
-        case EOpEqual: return "==";
-        case EOpNotEqual: return "!=";
+        case EOpMod: return "%";
+        case EOpRightShift: return ">>";
+        case EOpLeftShift: return "<<";
+        case EOpAnd: return "&";
+        case EOpInclusiveOr: return "|";
+        case EOpExclusiveOr: return "^";
+        case EOpEqual:
+        case EOpVectorEqual:
+            return "==";
+        case EOpNotEqual:
+        case EOpVectorNotEqual:
+            return "!=";
         case EOpLessThan: return "<";
         case EOpGreaterThan: return ">";
         case EOpLessThanEqual: return "<=";
         case EOpGreaterThanEqual: return ">=";
+        case EOpComma: return ",";
+        case EOpVectorTimesMatrix:
+        case EOpMatrixTimesVector:
+        case EOpVectorTimesScalar:
+        case EOpMatrixTimesScalar:
+            return "*";
         case EOpLogicalAnd: return "&&";
         case EOpLogicalOr: return "||";
-        case EOpLogicalNot: return "!";
+        case EOpLogicalXor: return "^^";
+        case EOpAssign:
+        case EOpVectorTimesMatrixAssign:
+        case EOpVectorTimesScalarAssign:
+        case EOpMatrixTimesScalarAssign:
+        case EOpMatrixTimesMatrixAssign:
+            return "=";
+        case EOpAddAssign: return "+=";
+        case EOpSubAssign: return "-=";
+        case EOpMulAssign: return "*=";
+        case EOpDivAssign: return "/=";
+        case EOpModAssign: return "%=";
+        case EOpAndAssign: return "&&=";
+        case EOpInclusiveOrAssign: return "||=";
+        case EOpExclusiveOrAssign: return "^^=";
+        case EOpLeftShiftAssign: return "<<=";
+        case EOpRightShiftAssign: return ">>=";
+
         case EOpVectorSwizzle:
             return ".";
         case EOpIndexDirect:
@@ -191,11 +229,6 @@ static std::string opStr(TOperator op) {
             return "[]";
         case EOpIndexDirectStruct:
             return ".";
-        case EOpVectorTimesMatrix:
-        case EOpMatrixTimesVector:
-        case EOpVectorTimesScalar:
-        case EOpMatrixTimesScalar:
-            return "*";
         default: {
             if (const char* builtin = builtinName(op)) {
                 return builtin;
@@ -470,6 +503,15 @@ public:
         } else if (visit == EvPostVisit) {
             auto children = pop();
             auto op = n->getOp();
+            if (op == EOpConvNumeric) {
+                auto typeName = typeStr(n->getType());
+                addNode<ConstructNode>(
+                        n,
+                        typeName,
+                        std::move(children)
+                );
+                return true;
+            }
             addNode<UnaryNode>(
                     n,
                     opStr(op),
@@ -552,33 +594,6 @@ public:
             }
         }
         return result;
-    }
-
-    void dumpSequence(TIntermAggregate *n) {
-        for (auto* child : n->getSequence()) {
-            auto* childAgg = child->getAsAggregate();
-            if (childAgg) {
-                printf("  child op=%d (%s) type=%s\n",
-                       childAgg->getOp(),
-                       opStr(childAgg->getOp()).c_str(),
-                       typeStr(childAgg->getType()).c_str());
-            } else if (child->getAsSymbolNode()) {
-                printf("  child symbol=%s\n",
-                       child->getAsSymbolNode()->getName().c_str());
-            } else if (child->getAsBranchNode()) {
-                printf("  child branch op=%d\n",
-                       child->getAsBranchNode()->getFlowOp());
-            } else if (child->getAsUnaryNode()) {
-                printf("  child unary op=%d\n",
-                       child->getAsUnaryNode()->getOp());
-            } else if (child->getAsBinaryNode()) {
-                printf("  child binary op=%d (%s)\n",
-                       child->getAsBinaryNode()->getOp(),
-                       opStr(child->getAsBinaryNode()->getOp()).c_str());
-            } else {
-                printf("  child unknown type\n");
-            }
-        }
     }
 
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
@@ -723,5 +738,15 @@ public:
     }
 
 };
+
+/*
+ * TODOS:
+ *
+ *     vec2 off=vec2(mfnoise(vf2;f1;f1;f1;((uv+(iTime*vec2(1.0, 1.0))), 12.0, 1200.0, ca), mfnoise(vf2;f1;f1;f1;(((uv+(iTime*vec2(1.0, 1.0)))+1337.0), 12.0, 1200.0, ca));
+ *
+ *  and at very end:
+ *
+float(outColor0, outColor1, outColor2, outColor3, iResolution, iTime, iChannel0, iChannel1, iChannel2, iChannel3, iLastSwitchTime, iPalette, iFeedbackAmount, iCoordinates, iCoordinateScale, iCMAPScale, iCMAPOffset, iTrapOffset, iTrapParam, iTrapRadius, iTrap, iFormula, iOrigin, iConstantMapOffset, iFormulaMix, iOffset, iSampleCount, iJacobiRepeats, iPumpAmont, iZoomSpeed, iRotationSpeed, iBlendTime, iGlobalRotationSpeed, bpm, spb, stepTime, nbeats, scale, hardBeats, syncTime, uv0, c, pi, TRAP_TYPE_COUNT, FORMULA_COUNT, COORDINATES_JACOBI, COORDINATES_WEIERSTRASS, COORDINATES_MOEBIUS, COORDINATES_SINGLE_POLE, COORDINATES_SPIRAL_ZOOM);
+ */
 
 #endif //PYGLSLANG_TRAVERSER_H
