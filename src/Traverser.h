@@ -131,7 +131,7 @@ public:
     const TraverseLogs& logged() const { return logs; }
 
     void visitSymbol(TIntermSymbol* n) override {
-        logVisit("Symbol", n, n->getMangledName());
+        logVisit("Symbol", n, std::string(n->getMangledName()));
         auto name = std::string(n->getName());
         const TType& t = n->getType();
         std::string storage(t.getStorageQualifierString());
@@ -242,13 +242,18 @@ public:
         if (children.size() >= 2) {
             if (auto *seq = children[0]->data_if<SequenceNode>()) {
                 for (auto& param : seq->statements) {
-                    if (auto* sym = param->data_if<SymbolNode>()) {
-                        result.params.push_back({
-                            sym->typeName,
-                            sym->name,
-                            sym->storage,
-                        });
+                    SymbolNode* sym = param->data_if<SymbolNode>();
+                    if (auto* decl = param->data_if<DeclareNode>()) {
+                        sym = static_cast<SymbolNode*>(decl);
                     }
+                    if (!sym) {
+                        continue;
+                    }
+                    result.params.push_back({
+                        sym->typeName,
+                        sym->name,
+                        sym->storage,
+                    });
                 }
             }
             index = 1;
@@ -264,7 +269,7 @@ public:
     }
 
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
-        logVisit("Aggregate", n, visit, n->getName());
+        logVisit("Aggregate", n, visit, std::string(n->getName()));
         if (visit == EvPreVisit) {
             pushStack();
             return true;

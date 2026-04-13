@@ -44,6 +44,7 @@ static void printLogs(const TraverseLogs& logs) {
                   << std::setw(12) << log.kind
                   << std::setw(20) << log.what
                   << std::setw(8)  << TraverseLog::visit_str(log)
+                  << std::setw(8) << log.source
                   << std::right
                   << std::setw(30) << log.complete
                   << std::setw(6)  << log.stack_str()
