@@ -65,25 +65,35 @@ private:
     void logVisit(std::string_view kind, TIntermNode *n, TVisit visit = EvPreVisit) {
         auto source = src(n);
         logs.push_back(TraverseLog{
-                kind, source.where(), visit,
-                source.code,
-                stack.size(), top().size()
+                kind, "", visit, "",
+                source.to_str(), stack.size(), top().size()
         });
     }
 
     void logVisit(std::string_view kind, TIntermTyped *n, TVisit visit = EvPreVisit) {
+        auto source = src(n);
         logs.push_back(TraverseLog{
                 kind, typeStr(n->getType()), visit,
                 std::string(n->getType().getCompleteString(true)),
-                stack.size(), top().size()
+                source.to_str(), stack.size(), top().size()
         });
     }
 
-    void logVisit(std::string_view kind, TIntermOperator *n, TVisit visit) {
+    void logVisit(std::string_view kind, TIntermTyped *n, std::string name) {
+        auto source = src(n);
         logs.push_back(TraverseLog{
-                kind, opStr(n->getOp()), visit,
+                kind, typeStr(n->getType()) + " " + name, EvPreVisit,
                 std::string(n->getType().getCompleteString(true)),
-                stack.size(), top().size()
+                source.to_str(), stack.size(), top().size()
+        });
+    }
+
+    void logVisit(std::string_view kind, TIntermOperator *n, TVisit visit, std::string name = "") {
+        auto source = src(n);
+        logs.push_back(TraverseLog{
+                kind, opStr(n->getOp()) + " " + name, visit,
+                std::string(n->getType().getCompleteString(true)),
+                source.to_str(), stack.size(), top().size()
         });
     }
 
@@ -121,7 +131,7 @@ public:
     const TraverseLogs& logged() const { return logs; }
 
     void visitSymbol(TIntermSymbol* n) override {
-        logVisit("Symbol", n);
+        logVisit("Symbol", n, n->getMangledName());
         auto name = std::string(n->getName());
         const TType& t = n->getType();
         std::string storage(t.getStorageQualifierString());
@@ -254,7 +264,7 @@ public:
     }
 
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
-        logVisit("Aggregate", n, visit);
+        logVisit("Aggregate", n, visit, n->getName());
         if (visit == EvPreVisit) {
             pushStack();
             return true;

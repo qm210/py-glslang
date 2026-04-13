@@ -83,6 +83,7 @@ void main()
 TEST_CASE("parse medium shader") {
     Parsed target = parse(medium);
     RootNode root = parse(medium).root();
+    printLogs(target.logs);
     auto check = emit(target.node);
     CHECK((root.globals.size() == 3));
 }

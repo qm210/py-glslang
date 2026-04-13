@@ -36,10 +36,10 @@ struct NodeSource {
     }
 
     [[nodiscard]]
-    std::string where() const {
+    std::string to_str() const {
         return std::to_string(line)
-               + ": "
-               + std::to_string(column);
+               + ":" + std::to_string(column)
+               + ":\"" + code + "\"";
     }
 };
 
