@@ -4,6 +4,7 @@
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <string>
+#include <utility>
 #include <vector>
 #include <memory>
 #include <sstream>
@@ -14,23 +15,17 @@
 #include "parse_op.h"
 #include "parse_type.h"
 #include "parse_const.h"
+#include "TraverseLog.h"
 
 using namespace glslang;
 
-static bool isGlobal(TIntermTyped* n) {
-    const auto& storage =
-            n->getType().getQualifier().storage;
-    return storage == EvqUniform
-        || storage == EvqConst
-        || storage == EvqGlobal
-        || storage == EvqVaryingOut
-        || storage == EvqVaryingIn;
-}
 
 struct Traverser : public TIntermTraverser {
 private:
     std::vector<NodePtrs> stack;
+    std::unordered_set<long long> knownIds;
     const TIntermediate& intermediate;
+    TraverseLogs logs;
 
     NodePtrs& top() {
         return stack.back();
@@ -43,7 +38,7 @@ private:
     }
 
     void pushStack() {
-        stack.push_back({});
+        stack.emplace_back();
     }
 
     template <typename T, typename... Args>
@@ -67,9 +62,34 @@ private:
         return pop();
     }
 
+    void logVisit(std::string_view kind, TIntermNode *n, TVisit visit = EvPreVisit) {
+        auto source = src(n);
+        logs.push_back(TraverseLog{
+                kind, source.where(), visit,
+                source.code,
+                stack.size(), top().size()
+        });
+    }
+
+    void logVisit(std::string_view kind, TIntermTyped *n, TVisit visit = EvPreVisit) {
+        logs.push_back(TraverseLog{
+                kind, typeStr(n->getType()), visit,
+                std::string(n->getType().getCompleteString(true)),
+                stack.size(), top().size()
+        });
+    }
+
+    void logVisit(std::string_view kind, TIntermOperator *n, TVisit visit) {
+        logs.push_back(TraverseLog{
+                kind, opStr(n->getOp()), visit,
+                std::string(n->getType().getCompleteString(true)),
+                stack.size(), top().size()
+        });
+    }
+
 public:
     explicit Traverser(const TIntermediate& intermediate)
-        : TIntermTraverser(true, false, true)
+        : TIntermTraverser(true, false, true, false, true)
         , intermediate(intermediate)
     {
         pushStack();
@@ -97,49 +117,41 @@ public:
         return Node::make<RootNode>({}, std::move(node));
     }
 
+    [[nodiscard]]
+    const TraverseLogs& logged() const { return logs; }
+
     void visitSymbol(TIntermSymbol* n) override {
-        auto name = std::string(n->getName().c_str());
-        if (isGlobal(n)) {
-            const TType& t = n->getType();
-            std::string storage(t.getStorageQualifierString());
-            std::string full(t.getCompleteString(true));
+        logVisit("Symbol", n);
+        auto name = std::string(n->getName());
+        const TType& t = n->getType();
+        std::string storage(t.getStorageQualifierString());
+        bool firstSeen = knownIds.insert(n->getId()).second;
+        if (firstSeen) {
             addNode<DeclareNode>(
                     n,
                     name,
                     typeStr(t),
                     storage,
-                    nullptr, // values get initialized elsewhere
-                    full
+                    completeTypeStr(t),
+                    nullptr
             );
         } else {
             addNode<SymbolNode>(
                     n,
                     name,
-                    typeStr(n->getType())
+                    typeStr(t),
+                    storage,
+                    completeTypeStr(t)
             );
         }
     }
 
     void visitConstantUnion(TIntermConstantUnion* n) override {
+        logVisit("Constant", n);
         addNode<ConstantNode>(
                 n,
                 formatConstant(n)
         );
-    }
-
-    static TIntermSymbol* declarationSymbol(TIntermBinary* n) {
-        if (n->getOp() != EOpAssign) {
-            return nullptr;
-        }
-        auto *symbol = n->getLeft()->getAsSymbolNode();
-        if (!symbol) {
-            return nullptr;
-        }
-        auto storage = symbol->getType().getQualifier().storage;
-        if (storage == EvqTemporary || storage == EvqGlobal) {
-            return symbol;
-        }
-        return nullptr;
     }
 
     /*
@@ -150,32 +162,35 @@ public:
      */
 
     bool visitBinary(TVisit visit, TIntermBinary* n) override {
+        logVisit("Binary", n, visit);
         if (visit == EvPreVisit) {
             pushStack();
-        } else if (visit == EvPostVisit) {
-            auto children = pop();
-            if (auto decl = declarationSymbol(n)) {
-                auto& type = decl->getType();
-                addNode<DeclareNode>(
-                        n,
-                        std::string(decl->getName()),
-                        typeStr(type),
-                        type.getStorageQualifierString(),
-                        children[1]
-                );
-            } else {
-                addNode<BinaryNode>(
-                        n,
-                        opStr(n->getOp()),
-                        children[0],
-                        children[1]
-                );
-            }
+            return true;
+        }
+        auto children = pop();
+        if (auto decl = declarationSymbol(n)) {
+            auto& type = decl->getType();
+            addNode<DeclareNode>(
+                    n,
+                    std::string(decl->getName()),
+                    typeStr(type),
+                    type.getStorageQualifierString(),
+                    completeTypeStr(type),
+                    children[1]
+            );
+        } else {
+            addNode<BinaryNode>(
+                    n,
+                    opStr(n->getOp()),
+                    children[0],
+                    children[1]
+            );
         }
         return true;
     }
 
     bool visitUnary(TVisit visit, TIntermUnary* n) override {
+        logVisit("Unary", n, visit);
         if (visit == EvPreVisit) {
             pushStack();
             return true;
@@ -210,44 +225,6 @@ public:
         return s;
     }
 
-    static bool nodesEqual(const NodePtr& a, const NodePtr& b) {
-        if (!a || !b)
-            return a == b;
-        if (a->data.index() != b->data.index())
-            return false;
-        if (auto* ca = a->data_if<ConstructNode>()) {
-            auto* cb = b->data_if<ConstructNode>();
-            if (ca->typeName != cb->typeName)
-                return false;
-            if (ca->args.size() != cb->args.size())
-                return false;
-            for (size_t i = 0; i < ca->args.size(); i++) {
-                if (!nodesEqual(ca->args[i], cb->args[i]))
-                    return false;
-            }
-            return true;
-        }
-        if (auto* ca = a->data_if<CallNode>()) {
-            auto* cb = b->data_if<CallNode>();
-            if (ca->funcName != cb->funcName)
-                return false;
-            if (ca->args.size() != cb->args.size())
-                return false;
-            for (size_t i = 0; i < ca->args.size(); i++) {
-                if (!nodesEqual(ca->args[i], cb->args[i]))
-                    return false;
-            }
-            return true;
-        }
-        if (auto* ca = a->data_if<SymbolNode>()) {
-            return ca->name == b->data_if<SymbolNode>()->name;
-        }
-        if (auto* ca = a->data_if<ConstantNode>()) {
-            return ca->value == b->data_if<ConstantNode>()->value;
-        }
-        return false;
-    }
-
     static FunctionParts splitFunction(const NodePtrs& children)
     {
         FunctionParts result;
@@ -277,6 +254,7 @@ public:
     }
 
     bool visitAggregate(TVisit visit, TIntermAggregate* n) override {
+        logVisit("Aggregate", n, visit);
         if (visit == EvPreVisit) {
             pushStack();
             return true;
@@ -330,6 +308,7 @@ public:
     }
 
     bool visitSelection(TVisit visit, TIntermSelection* n) override {
+        logVisit("Aggregate", n, visit);
         if (visit != EvPreVisit) {
             return true;
         }
@@ -346,6 +325,7 @@ public:
     }
 
     bool visitSwitch(TVisit visit, TIntermSwitch* n) override {
+        logVisit("Switch", n, visit);
         if (visit == EvPreVisit) {
             pushStack();
             return true;
@@ -370,8 +350,8 @@ public:
     }
 
     bool visitLoop(TVisit visit, TIntermLoop* n) override {
+        logVisit("Loop", n, visit);
         if (visit != EvPreVisit) {
-            printf("visitLoop ran into %d\n", visit);
             return true;
         }
         NodePtr condition = first(traverseChildren(n->getTest()));
@@ -388,6 +368,7 @@ public:
     }
 
     bool visitBranch(TVisit visit, TIntermBranch* n) override {
+        logVisit("Branch", n, visit);
         if (visit != EvPreVisit) {
             return true;
         }
@@ -422,12 +403,8 @@ public:
 
 /*
  * TODOS:
- *
- *     vec2 off=vec2(mfnoise(vf2;f1;f1;f1;((uv+(iTime*vec2(1.0, 1.0))), 12.0, 1200.0, ca), mfnoise(vf2;f1;f1;f1;(((uv+(iTime*vec2(1.0, 1.0)))+1337.0), 12.0, 1200.0, ca));
- *
- *  and at very end:
- *
-float(outColor0, outColor1, outColor2, outColor3, iResolution, iTime, iChannel0, iChannel1, iChannel2, iChannel3, iLastSwitchTime, iPalette, iFeedbackAmount, iCoordinates, iCoordinateScale, iCMAPScale, iCMAPOffset, iTrapOffset, iTrapParam, iTrapRadius, iTrap, iFormula, iOrigin, iConstantMapOffset, iFormulaMix, iOffset, iSampleCount, iJacobiRepeats, iPumpAmont, iZoomSpeed, iRotationSpeed, iBlendTime, iGlobalRotationSpeed, bpm, spb, stepTime, nbeats, scale, hardBeats, syncTime, uv0, c, pi, TRAP_TYPE_COUNT, FORMULA_COUNT, COORDINATES_JACOBI, COORDINATES_WEIERSTRASS, COORDINATES_MOEBIUS, COORDINATES_SINGLE_POLE, COORDINATES_SPIRAL_ZOOM);
+ * -- layout qualifiers (DeclareNode) appear in main() ?
+ * -- type "int ..." also
  */
 
 #endif //PYGLSLANG_TRAVERSER_H

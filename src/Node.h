@@ -16,11 +16,11 @@ struct SymbolNode {
     std::string name;
     std::string typeName;
     std::string storage;
+    std::string completeType;
 };
 
 struct DeclareNode: SymbolNode {
     NodePtr init;
-    std::string fullQualifier;
 };
 
 struct ConstantNode {

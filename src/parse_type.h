@@ -38,7 +38,7 @@ static std::string typePrefix(const TType& t) {
     }
 }
 
-static inline const char oneDigit(int digit) {
+static inline char oneDigit(int digit) {
     return '0' + digit;
 }
 
@@ -48,7 +48,7 @@ static std::string typeStr(const TType& t) {
         s += " ";
     }
     if (t.isStruct()) {
-        s += t.getTypeName().c_str();
+        s += t.getTypeName();
         return s;
     }
     else if (t.isMatrix()) {
@@ -56,7 +56,8 @@ static std::string typeStr(const TType& t) {
         char rows = oneDigit(t.getMatrixRows());
         s += typePrefix(t) + "mat" + cols;
         if (cols != rows) {
-            s += 'x' + rows;
+            s += 'x';
+            s += rows;
         }
         return s;
     }
@@ -67,7 +68,7 @@ static std::string typeStr(const TType& t) {
 
     std::string base = basicType(t);
     if (base.empty()) {
-        return s + std::string(t.getCompleteString().c_str());
+        return s + std::string(t.getCompleteString());
     } else {
         s += base;
     }
@@ -84,6 +85,45 @@ static std::string typeStr(const TType& t) {
     }
 
     return s;
+}
+
+static bool isGlobal(TIntermTyped* n) {
+    const auto &storage =
+            n->getType().getQualifier().storage;
+    return storage == EvqUniform
+           || storage == EvqConst
+           || storage == EvqGlobal
+           || storage == EvqVaryingOut
+           || storage == EvqVaryingIn;
+}
+
+static bool needsNoQualifier(const TType& t) {
+    const auto storage = t.getQualifier().storage;
+    return storage == EvqGlobal || storage == EvqTemporary;
+}
+
+static TIntermSymbol* declarationSymbol(TIntermBinary* n) {
+    if (n->getOp() != EOpAssign) {
+        return nullptr;
+    }
+    auto *symbol = n->getLeft()->getAsSymbolNode();
+    if (!symbol) {
+        return nullptr;
+    }
+    auto storage = symbol->getType().getQualifier().storage;
+    if (needsNoQualifier(symbol->getType())) {
+        return symbol;
+    }
+    return nullptr;
+}
+
+static std::string completeTypeStr(const TType& t) {
+    const auto storage = t.getQualifier().storage;
+    if (needsNoQualifier(t)) {
+        return std::string(t.getBasicTypeString());
+    } else {
+        return std::string(t.getCompleteString(true));
+    }
 }
 
 #endif //PYGLSLANG_PARSE_TYPE_H

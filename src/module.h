@@ -4,13 +4,14 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <glslang/Include/intermediate.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
-#include <stdexcept>
 
 #include "Node.h"
+#include "TraverseLog.h"
 
 enum Stage {
     STAGE_VERT = 0,
@@ -25,12 +26,13 @@ struct Parsed {
     bool ok = false;
     std::string info;
     NodePtr node;
+    TraverseLogs logs;
 
     [[nodiscard]]
     const RootNode& root() const {
         auto *root = node->data_if<RootNode>();
         if (!root) {
-            throw std::runtime_error("Parsing AST failed!");
+            throw std::runtime_error("Parsing AST failed!\n\n" + info);
         }
         return *root;
     }

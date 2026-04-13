@@ -124,10 +124,18 @@ PYBIND11_MODULE(pyglslang, m) {
             .def_readonly("children", &RootNode::children)
             .def_readonly("globals", &RootNode::globals);
 
+    py::class_<TraverseLog>(m, "TraverseLog")
+            .def_readonly("kind", &TraverseLog::kind)
+            .def_readonly("what", &TraverseLog::what)
+            .def_property_readonly("visit", TraverseLog::visit_str)
+            .def_readonly("complete", &TraverseLog::complete)
+            .def_property_readonly("stackSize", &TraverseLog::stack_str);
+
     py::class_<Parsed>(m, "Parsed")
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
         .def_readonly("node", &Parsed::node)
+        .def_readonly("logs", &Parsed::logs)
         .def("rootnode", [](const Parsed& p) -> RootNode {
             return *data_of<RootNode>(p.node);
         });

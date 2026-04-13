@@ -44,10 +44,14 @@ std::string emitGlobals(const NodePtrs& nodes, int level) {
     std::string result;
     for (auto& each : nodes) {
         result += indent(level);
-        auto decl = each->data_if<DeclareNode>();
-        result += decl->fullQualifier + " " + decl->name;
-        if (decl->init) {
-            result += "=" + emit(decl->init, level);
+        if (auto *sym = each->data_if<SymbolNode>()) {
+            result += sym->completeType + " " + sym->name;
+        }
+        else if (auto *decl = each->data_if<DeclareNode>()) {
+            result += decl->completeType + " " + decl->name;
+            if (decl->init) {
+                result += " = " + emit(decl->init, level);
+            }
         }
         result += ";\n";
     }

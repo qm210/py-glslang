@@ -34,6 +34,13 @@ struct NodeSource {
         }
         return src;
     }
+
+    [[nodiscard]]
+    std::string where() const {
+        return std::to_string(line)
+               + ": "
+               + std::to_string(column);
+    }
 };
 
 #endif //PYGLSLANG_NODESOURCE_H

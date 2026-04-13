@@ -62,8 +62,8 @@ std::shared_ptr<Node> simplify(const NodePtr node) {
                                            n.name,
                                            n.typeName,
                                            n.storage,
-                                           simplify(n.init),
-                                           n.fullQualifier);
+                                           n.completeType,
+                                           simplify(n.init));
         }
         if constexpr (std::is_same_v<T, CallNode>) {
             NodePtrs args;

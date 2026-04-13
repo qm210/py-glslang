@@ -39,6 +39,7 @@ Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
     Traverser traverser(*intermediate);
     intermediate->getTreeRoot()->traverse(&traverser);
     result.node = traverser.build();
+    result.logs = traverser.logged();
     return result;
 }
 
