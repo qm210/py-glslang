@@ -40,6 +40,7 @@ struct Parsed {
 
 Parsed parse(const std::string& source, Stage = STAGE_FRAG);
 
-std::string emit(const NodePtr& node, int level = 0);
+std::string emit(const NodePtr&, int level = 0);
+std::string emitGlobals(const NodePtrs&);
 
 #endif //PYGLSLANG_MODULE_H

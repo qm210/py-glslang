@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 # a) install module globally per pip
 # b) have the .pyd/.so placed next to the .py
 # c) have the .pyd/.so found in sys.path:
-# import sys
-# sys.path.insert(0, "build")
+import sys
+sys.path.insert(0, "build")
 import pyglslang as glsl
 
 

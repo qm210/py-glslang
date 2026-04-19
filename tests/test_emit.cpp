@@ -7,7 +7,7 @@ TEST_CASE("emit qualified declaration") {
         void main() { }
     )";
     RootNode root = parse(src).root();
-    std::string target = emit(root.globals[0]);
+    std::string target = emitGlobals(root.globals);
     // whitespace as given by glslang getCompleteString()
-    CHECK((target == "layout( location=0) out vec4 outColor0"));
+    CHECK((target == "layout( location=0) out vec4 outColor0;\n"));
 }

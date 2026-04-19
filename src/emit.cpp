@@ -40,7 +40,8 @@ std::string emitBlock(const NodePtrs& nodes, int level) {
     return result;
 }
 
-std::string emitGlobals(const NodePtrs& nodes, int level) {
+std::string emitGlobals(const NodePtrs& nodes) {
+    const int level = 0;
     std::string result;
     for (auto& each : nodes) {
         result += indent(level);
@@ -210,7 +211,7 @@ std::string emit(const NodePtr& node, int level) {
             return "discard";
         }
         if constexpr (std::is_same_v<T, RootNode>) {
-            return emitGlobals(n.globals, level)
+            return emitGlobals(n.globals)
                 + "\n"
                 + emitBlock(n.children, level);
         }
