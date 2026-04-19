@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_PARSE_OP_H
-#define PYGLSLANG_PARSE_OP_H
+#ifndef PYGLSL_PARSE_OP_H
+#define PYGLSL_PARSE_OP_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -234,4 +234,4 @@ static std::string opStr(TOperator op) {
     }
 }
 
-#endif //PYGLSLANG_PARSE_OP_H
+#endif //PYGLSL_PARSE_OP_H

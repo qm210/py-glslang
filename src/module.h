@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_MODULE_H
-#define PYGLSLANG_MODULE_H
+#ifndef PYGLSL_MODULE_H
+#define PYGLSL_MODULE_H
 
 #include <memory>
 #include <vector>
@@ -43,4 +43,4 @@ Parsed parse(const std::string& source, Stage = STAGE_FRAG);
 std::string emit(const NodePtr&, int level = 0);
 std::string emitGlobals(const NodePtrs&);
 
-#endif //PYGLSLANG_MODULE_H
+#endif //PYGLSL_MODULE_H

@@ -6,10 +6,10 @@ from argparse import ArgumentParser
 # c) have the .pyd/.so found in sys.path:
 import sys
 sys.path.insert(0, "build")
-import pyglslang as glsl
+import pyglsl
 
 
-def write_node(node: glsl.Node, level=0, previous="") -> str:
+def write_node(node: pyglsl.Node, level=0, previous="") -> str:
     indent = level * 2 * " "
     result = f"[{node.kind}] {indent}{node.typeName} \"{node.name}\" ({node.value})"
     if previous:
@@ -23,11 +23,11 @@ def run(args):
     with open(args.shader, "r", encoding="utf-8") as f:
         source = f.read()
 
-    result = glsl.parse(source)
+    result = pyglsl.parse(source)
     if result.ok:
         print("Parse OK")
-        ast = glsl.simplify(result.node)
-        code = glsl.emit(ast)
+        ast = pyglsl.simplify(result.node)
+        code = pyglsl.emit(ast)
         ast_printed = write_node(ast)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:

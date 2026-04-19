@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_PARSE_TYPE_H
-#define PYGLSLANG_PARSE_TYPE_H
+#ifndef PYGLSL_PARSE_TYPE_H
+#define PYGLSL_PARSE_TYPE_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -126,4 +126,4 @@ static std::string completeTypeStr(const TType& t) {
     }
 }
 
-#endif //PYGLSLANG_PARSE_TYPE_H
+#endif //PYGLSL_PARSE_TYPE_H

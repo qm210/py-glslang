@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_TRAVERSELOG_H
-#define PYGLSLANG_TRAVERSELOG_H
+#ifndef PYGLSL_TRAVERSELOG_H
+#define PYGLSL_TRAVERSELOG_H
 
 #include <string>
 #include <vector>
@@ -52,4 +52,4 @@ static void printLogs(const TraverseLogs& logs) {
     }
 }
 
-#endif //PYGLSLANG_TRAVERSELOG_H
+#endif //PYGLSL_TRAVERSELOG_H

@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_NODE_H
-#define PYGLSLANG_NODE_H
+#ifndef PYGLSL_NODE_H
+#define PYGLSL_NODE_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -202,4 +202,4 @@ inline void moveAfter(NodePtrs& target, NodePtrs&& nodes) {
     );
 }
 
-#endif //PYGLSLANG_NODE_H
+#endif //PYGLSL_NODE_H

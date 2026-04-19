@@ -11,7 +11,7 @@ namespace py = pybind11;
 #include "module.h"
 #include "NodeSource.h"
 
-PYBIND11_MODULE(pyglslang, m) {
+PYBIND11_MODULE(pyglsl, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
 
     py::enum_<Stage>(m, "Stage")

@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_TRAVERSER_H
-#define PYGLSLANG_TRAVERSER_H
+#ifndef PYGLSL_TRAVERSER_H
+#define PYGLSL_TRAVERSER_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -422,4 +422,4 @@ public:
  * -- type "int ..." also
  */
 
-#endif //PYGLSLANG_TRAVERSER_H
+#endif //PYGLSL_TRAVERSER_H

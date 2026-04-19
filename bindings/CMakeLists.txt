@@ -13,20 +13,20 @@ execute_process(
 )
 find_package(pybind11 CONFIG REQUIRED)
 
-pybind11_add_module(pyglslang module.cpp)
+pybind11_add_module(pyglsl module.cpp)
 
-target_include_directories(pyglslang
+target_include_directories(pyglsl
     PUBLIC
     ${pybind11_INCLUDE_DIRS}
 )
-target_link_libraries(pyglslang
+target_link_libraries(pyglsl
     PRIVATE
     pybind11::module
     glslang_nodes
 )
 
 message("OUTPUT " ${OUTPUT_DIR})
-set_target_properties(pyglslang PROPERTIES
+set_target_properties(pyglsl PROPERTIES
     CXX_STANDARD                        17
     RUNTIME_OUTPUT_DIRECTORY            "${OUTPUT_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG      "${OUTPUT_DIR}"
