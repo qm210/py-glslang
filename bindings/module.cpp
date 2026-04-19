@@ -135,6 +135,7 @@ PYBIND11_MODULE(pyglsl, m) {
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
         .def_readonly("node", &Parsed::node)
+        .def_readonly("spirv", &Parsed::spirv)
         .def_readonly("logs", &Parsed::logs)
         .def("rootnode", [](const Parsed& p) -> RootNode {
             return *data_of<RootNode>(p.node);

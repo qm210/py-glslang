@@ -45,10 +45,12 @@ add_library(glslang_nodes STATIC
 )
 target_include_directories(glslang_nodes PUBLIC
     ${glslang_SOURCE_DIR}
+    ${glslang_SOURCE_DIR}/SPIRV
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_link_libraries(glslang_nodes PRIVATE
     glslang
+    SPIRV
     glslang-default-resource-limits
     SPIRV
     MachineIndependent

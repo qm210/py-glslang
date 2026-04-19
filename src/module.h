@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <glslang/Include/intermediate.h>
+#include <GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 
@@ -27,12 +28,13 @@ struct Parsed {
     std::string info;
     NodePtr node;
     TraverseLogs logs;
+    std::vector<uint32_t> spirv;
 
     [[nodiscard]]
     const RootNode& root() const {
         auto *root = node->data_if<RootNode>();
         if (!root) {
-            throw std::runtime_error("Parsing AST failed!\n\n" + info);
+            throw std::runtime_error("Parsing AST failed!");
         }
         return *root;
     }
