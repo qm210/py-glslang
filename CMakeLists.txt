@@ -40,8 +40,9 @@ FetchContent_MakeAvailable(spirv_cross)
 
 add_library(glslang_nodes STATIC
     src/parse.cpp
-    src/emit.cpp
     src/Node.cpp
+    src/emit.cpp
+    src/emitFromSpirv.cpp
 )
 target_include_directories(glslang_nodes PUBLIC
     ${glslang_SOURCE_DIR}

@@ -23,12 +23,14 @@ enum Stage {
     STAGE_COMP = 5
 };
 
+using Spirv = std::vector<uint32_t>;
+
 struct Parsed {
     bool ok = false;
     std::string info;
     NodePtr node;
     TraverseLogs logs;
-    std::vector<uint32_t> spirv;
+    Spirv spirv;
 
     [[nodiscard]]
     const RootNode& root() const {
@@ -44,5 +46,6 @@ Parsed parse(const std::string& source, Stage = STAGE_FRAG);
 
 std::string emit(const NodePtr&, int level = 0);
 std::string emitGlobals(const NodePtrs&);
+std::string emitFromSpirv(const Spirv&);
 
 #endif //PYGLSL_MODULE_H

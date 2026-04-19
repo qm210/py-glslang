@@ -159,4 +159,9 @@ PYBIND11_MODULE(pyglsl, m) {
             },
             py::arg("node")
     );
+    m.def(
+            "emitFromSpirv",
+            &emitFromSpirv,
+            py::arg("spirv")
+    );
 }
