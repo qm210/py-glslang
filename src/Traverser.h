@@ -23,7 +23,6 @@ using namespace glslang;
 struct Traverser : public TIntermTraverser {
 private:
     std::vector<NodePtrs> stack;
-    std::unordered_set<long long> knownIds;
     const TIntermediate& intermediate;
     TraverseLogs logs;
 

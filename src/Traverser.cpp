@@ -20,7 +20,7 @@ NodePtr Traverser::build() {
         }
         node.children.push_back(child);
     }
-    removeDeclaredUninitializedConstants(std::move(node.globals));
+    removeConstantSymbols(std::move(node.globals));
     return Node::make<RootNode>({}, std::move(node));
 }
 
@@ -29,25 +29,13 @@ void Traverser::visitSymbol(TIntermSymbol* n) {
     auto name = std::string(n->getName());
     const TType& t = n->getType();
     std::string storage(t.getStorageQualifierString());
-    bool firstSeen = knownIds.insert(n->getId()).second;
-    if (firstSeen) {
-        addNode<DeclareNode>(
-            n,
-            name,
-            typeStr(t),
-            storage,
-            completeTypeStr(t),
-            nullptr
-        );
-    } else {
-        addNode<SymbolNode>(
-            n,
-            name,
-            typeStr(t),
-            storage,
-            completeTypeStr(t)
-        );
-    }
+    addNode<SymbolNode>(
+        n,
+        name,
+        typeStr(t),
+        storage,
+        completeTypeStr(t)
+    );
 }
 
 void Traverser::visitConstantUnion(TIntermConstantUnion* n) {

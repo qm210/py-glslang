@@ -120,7 +120,11 @@ std::string emit(const NodePtr& node, int level) {
                 }
                 return emit(n.lhs, level) + "." + emit(n.rhs, level);
             }
-            return "(" + emit(n.lhs, level) + n.op + emit(n.rhs, level) + ")";
+            std::string result = emit(n.lhs, level) + n.op + emit(n.rhs, level);
+            if (n.op != "=" && n.op != "*") {
+                result = "(" + result + ")";
+            }
+            return result;
         }
         if constexpr (std::is_same_v<T, UnaryNode>) {
             if (n.isBuiltin) {
