@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_MODULE_H
-#define PYGLSLANG_MODULE_H
+#ifndef PYGLSL_MODULE_H
+#define PYGLSL_MODULE_H
 
 #include <memory>
 #include <vector>
@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <glslang/MachineIndependent/localintermediate.h>
 #include <glslang/Include/intermediate.h>
+#include <GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 
@@ -22,17 +23,20 @@ enum Stage {
     STAGE_COMP = 5
 };
 
+using Spirv = std::vector<uint32_t>;
+
 struct Parsed {
     bool ok = false;
     std::string info;
     NodePtr node;
     TraverseLogs logs;
+    Spirv spirv;
 
     [[nodiscard]]
     const RootNode& root() const {
         auto *root = node->data_if<RootNode>();
         if (!root) {
-            throw std::runtime_error("Parsing AST failed!\n\n" + info);
+            throw std::runtime_error("Parsing AST failed!");
         }
         return *root;
     }
@@ -42,5 +46,6 @@ Parsed parse(const std::string& source, Stage = STAGE_FRAG);
 
 std::string emit(const NodePtr&, int level = 0);
 std::string emitGlobals(const NodePtrs&);
+std::string emitFromSpirv(const Spirv&);
 
-#endif //PYGLSLANG_MODULE_H
+#endif //PYGLSL_MODULE_H

@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_NODE_H
-#define PYGLSLANG_NODE_H
+#ifndef PYGLSL_NODE_H
+#define PYGLSL_NODE_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -202,4 +202,15 @@ inline void moveAfter(NodePtrs& target, NodePtrs&& nodes) {
     );
 }
 
-#endif //PYGLSLANG_NODE_H
+inline void removeConstantSymbols(NodePtrs&& nodes) {
+    nodes.erase(
+        std::remove_if(nodes.begin(), nodes.end(),
+                       [](const std::shared_ptr<Node>& n) {
+                auto symbol = n->data_if<SymbolNode>();
+                return symbol && symbol->storage == "const";
+            }),
+            nodes.end()
+    );
+}
+
+#endif //PYGLSL_NODE_H

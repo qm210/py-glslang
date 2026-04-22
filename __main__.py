@@ -1,15 +1,11 @@
+import sys
 from argparse import ArgumentParser
 
-# 3 Options to find our module:
-# a) install module globally per pip
-# b) have the .pyd/.so placed next to the .py
-# c) have the .pyd/.so found in sys.path:
-import sys
 sys.path.insert(0, "build")
-import pyglslang as glsl
+import pyglsl
 
 
-def write_node(node: glsl.Node, level=0, previous="") -> str:
+def write_node(node: pyglsl.Node, level=0, previous="") -> str:
     indent = level * 2 * " "
     result = f"[{node.kind}] {indent}{node.typeName} \"{node.name}\" ({node.value})"
     if previous:
@@ -23,18 +19,19 @@ def run(args):
     with open(args.shader, "r", encoding="utf-8") as f:
         source = f.read()
 
-    result = glsl.parse(source)
+    result = pyglsl.parse(source)
     if result.ok:
         print("Parse OK")
-        ast = glsl.simplify(result.node)
-        code = glsl.emit(ast)
-        ast_printed = write_node(ast)
+        print(f"SPIR-V word count: {len(result.spirv)}")
+        ast = pyglsl.simplify(result.node)
+        written = pyglsl.emit(result.node)
+        # written = pyglsl.emitFromSpirv(result.spirv)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:
-                f.write(ast_printed)
+                f.write(written)
         else:
             print("== AST ==")
-            print(ast_printed)
+            print(written)
     else:
         print("Parse FAILED:")
         print(result.info)

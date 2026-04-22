@@ -11,7 +11,7 @@ namespace py = pybind11;
 #include "module.h"
 #include "NodeSource.h"
 
-PYBIND11_MODULE(pyglslang, m) {
+PYBIND11_MODULE(pyglsl, m) {
     m.doc() = "Python bindings for Khronos Group GLSL parser";
 
     py::enum_<Stage>(m, "Stage")
@@ -135,6 +135,7 @@ PYBIND11_MODULE(pyglslang, m) {
         .def_readonly("ok", &Parsed::ok)
         .def_readonly("info", &Parsed::info)
         .def_readonly("node", &Parsed::node)
+        .def_readonly("spirv", &Parsed::spirv)
         .def_readonly("logs", &Parsed::logs)
         .def("rootnode", [](const Parsed& p) -> RootNode {
             return *data_of<RootNode>(p.node);
@@ -157,5 +158,10 @@ PYBIND11_MODULE(pyglslang, m) {
                 return emit(node);
             },
             py::arg("node")
+    );
+    m.def(
+            "emitFromSpirv",
+            &emitFromSpirv,
+            py::arg("spirv")
     );
 }

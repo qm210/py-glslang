@@ -14,6 +14,9 @@ Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
                        450);
     shader.setEnvClient(glslang::EShClientOpenGL,
                         glslang::EShTargetOpenGL_450);
+    shader.setEnvTarget(glslang::EShTargetSpv,
+                        glslang::EShTargetSpv_1_0);
+
     Parsed result;
     result.ok = shader.parse(
             GetDefaultResources(),
@@ -36,6 +39,8 @@ Parsed parse_when_initialized(const std::string& source, Stage stage_enum) {
     }
 
     glslang::TIntermediate* intermediate = program.getIntermediate(stage);
+    glslang::GlslangToSpv(*intermediate, result.spirv);
+
     Traverser traverser(*intermediate);
     intermediate->getTreeRoot()->traverse(&traverser);
     result.node = traverser.build();

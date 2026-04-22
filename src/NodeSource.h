@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_NODESOURCE_H
-#define PYGLSLANG_NODESOURCE_H
+#ifndef PYGLSL_NODESOURCE_H
+#define PYGLSL_NODESOURCE_H
 
 #include <string>
 #include <sstream>
@@ -43,4 +43,4 @@ struct NodeSource {
     }
 };
 
-#endif //PYGLSLANG_NODESOURCE_H
+#endif //PYGLSL_NODESOURCE_H

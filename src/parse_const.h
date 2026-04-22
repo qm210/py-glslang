@@ -1,5 +1,5 @@
-#ifndef PYGLSLANG_PARSE_CONST_H
-#define PYGLSLANG_PARSE_CONST_H
+#ifndef PYGLSL_PARSE_CONST_H
+#define PYGLSL_PARSE_CONST_H
 
 #include <glslang/Include/intermediate.h>
 #include <glslang/MachineIndependent/localintermediate.h>
@@ -59,4 +59,4 @@ static std::string formatConstant(TIntermConstantUnion* n) {
     return s;
 }
 
-#endif //PYGLSLANG_PARSE_CONST_H
+#endif //PYGLSL_PARSE_CONST_H
