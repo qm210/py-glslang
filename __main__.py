@@ -24,16 +24,14 @@ def run(args):
         print("Parse OK")
         print(f"SPIR-V word count: {len(result.spirv)}")
         ast = pyglsl.simplify(result.node)
-        code2 = pyglsl.emitFromSpirv(result.spirv)
-        code = pyglsl.emit(ast)
-        ast_printed = write_node(ast)
-
+        written = pyglsl.emit(result.node)
+        # written = pyglsl.emitFromSpirv(result.spirv)
         if args.outfile:
             with open(args.outfile, "w", encoding="utf-8") as f:
-                f.write(ast_printed)
+                f.write(written)
         else:
             print("== AST ==")
-            print(ast_printed)
+            print(written)
     else:
         print("Parse FAILED:")
         print(result.info)

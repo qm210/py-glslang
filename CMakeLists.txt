@@ -19,10 +19,9 @@ set(BUILD_TESTING           OFF CACHE BOOL "" FORCE)
 set(ENABLE_OPT              OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glslang)
 
-# TODO: fix that main branch to whatever sounds good
 FetchContent_Declare(spirv_cross
     GIT_REPOSITORY   https://github.com/KhronosGroup/SPIRV-Cross.git
-    GIT_TAG          main
+    GIT_TAG          vulkan-sdk-1.4.341.0
 )
 set(ENABLE_GLSLANG_BINARIES     OFF CACHE BOOL "" FORCE)
 set(ENABLE_HLSLANG_BINARIES     OFF CACHE BOOL "" FORCE)
@@ -40,9 +39,10 @@ FetchContent_MakeAvailable(spirv_cross)
 
 add_library(glslang_nodes STATIC
     src/parse.cpp
+    src/Traverser.cpp
     src/Node.cpp
     src/emit.cpp
-    src/emitFromSpirv.cpp
+    src/spirv/emit.cpp
 )
 target_include_directories(glslang_nodes PUBLIC
     ${glslang_SOURCE_DIR}
@@ -60,7 +60,6 @@ target_link_libraries(glslang_nodes PRIVATE
     spirv-cross-glsl
 )
 target_compile_features(spirv-cross-core PUBLIC cxx_std_17)
-target_compile_features(spirv-cross-glsl PUBLIC cxx_std_17)
 
 add_subdirectory(bindings)
 

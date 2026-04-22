@@ -202,4 +202,18 @@ inline void moveAfter(NodePtrs& target, NodePtrs&& nodes) {
     );
 }
 
+inline void removeDeclaredUninitializedConstants(NodePtrs&& nodes) {
+    nodes.erase(
+        std::remove_if(nodes.begin(), nodes.end(),
+                       [](const std::shared_ptr<Node>& n) {
+                auto declare = n->data_if<DeclareNode>();
+                if (!declare) {
+                    return false;
+                }
+                return declare->storage == "const" && !declare->init;
+            }),
+            nodes.end()
+    );
+}
+
 #endif //PYGLSL_NODE_H
